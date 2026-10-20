@@ -1,0 +1,1088 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Color Token Workshop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <style>
+      :root{
+        color-scheme: light dark;
+        --chrome-bg:#e9e9ec;
+        --chrome-panel:#f7f7f8;
+        --chrome-panel2:#ffffff;
+        --chrome-ink:#1d1f24;
+        --chrome-mut:#5d6169;
+        --chrome-faint:#8a8e96;
+        --chrome-line:#d5d6db;
+        --chrome-line2:#c2c4cb;
+        --chrome-acc:#b3402a;
+        --chrome-acc-ink:#ffffff;
+        --chrome-good:#177245;
+        --chrome-warn:#9a6206;
+        --chrome-bad:#b3261e;
+        --chrome-chip:#ececf0;
+        --shadow:0 1px 2px rgba(20,20,30,.06),0 8px 28px rgba(20,20,30,.07);
+      }
+      @media (prefers-color-scheme: dark){
+        :root{
+          --chrome-bg:#131417;
+          --chrome-panel:#1b1c20;
+          --chrome-panel2:#222329;
+          --chrome-ink:#eceef2;
+          --chrome-mut:#a3a7b0;
+          --chrome-faint:#71757f;
+          --chrome-line:#2e3038;
+          --chrome-line2:#3d404b;
+          --chrome-acc:#e0654a;
+          --chrome-good:#4cc084;
+          --chrome-warn:#e0a83e;
+          --chrome-bad:#f0766d;
+          --chrome-chip:#26272e;
+          --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 28px rgba(0,0,0,.35);
+        }
+      }
+      *{box-sizing:border-box}
+      [hidden]{display:none !important}
+      html,body{margin:0;padding:0}
+      body{
+        font-family:"Outfit",system-ui,-apple-system,"Segoe UI",sans-serif;
+        background:var(--chrome-bg);
+        color:var(--chrome-ink);
+        font-size:15px;
+        line-height:1.45;
+        -webkit-font-smoothing:antialiased;
+      }
+      .mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+      button{font-family:inherit;cursor:pointer}
+      input{font-family:inherit}
+
+      /* ---------- top bar ---------- */
+      .topbar{
+        position:sticky;top:0;z-index:40;
+        display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+        padding:10px 18px;
+        background:var(--chrome-panel);
+        border-bottom:1px solid var(--chrome-line);
+      }
+      .topbar .wordmark{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;letter-spacing:.01em}
+      .wordmark .swatches{display:flex;border-radius:6px;overflow:hidden;border:1px solid var(--chrome-line2)}
+      .wordmark .swatches span{width:11px;height:22px;display:block}
+      .topbar .spacer{flex:1}
+      .seg{display:inline-flex;background:var(--chrome-chip);border:1px solid var(--chrome-line);border-radius:9px;padding:3px;gap:2px}
+      .seg button{
+        border:0;background:transparent;color:var(--chrome-mut);
+        padding:5px 14px;border-radius:6px;font-size:13.5px;font-weight:600;
+      }
+      .seg button[aria-pressed="true"]{background:var(--chrome-acc);color:var(--chrome-acc-ink);box-shadow:0 1px 3px rgba(0,0,0,.18)}
+      .editing-label{font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--chrome-faint)}
+      .btn{
+        border:1px solid var(--chrome-line2);background:var(--chrome-panel2);color:var(--chrome-ink);
+        border-radius:9px;padding:7px 14px;font-size:13.5px;font-weight:600;
+        display:inline-flex;align-items:center;gap:7px;
+      }
+      .btn:hover{border-color:var(--chrome-faint)}
+      .btn.primary{background:var(--chrome-acc);border-color:var(--chrome-acc);color:var(--chrome-acc-ink)}
+      .btn.primary:hover{filter:brightness(1.07)}
+      .btn.small{padding:4px 10px;font-size:12.5px;border-radius:7px}
+      .btn:disabled{opacity:.45;cursor:default}
+
+      /* ---------- stepper ---------- */
+      .stepper{
+        display:flex;gap:4px;flex-wrap:wrap;
+        padding:12px 18px 0;
+        max-width:1560px;margin:0 auto;
+      }
+      .step{
+        display:flex;align-items:center;gap:9px;
+        border:1px solid var(--chrome-line);background:var(--chrome-panel);
+        border-radius:10px;padding:8px 14px 8px 9px;font-size:13.5px;font-weight:600;color:var(--chrome-mut);
+      }
+      .step .n{
+        width:22px;height:22px;border-radius:50%;display:grid;place-items:center;
+        background:var(--chrome-chip);color:var(--chrome-mut);font-size:12px;font-weight:700;flex:none;
+      }
+      .step[aria-current="step"]{color:var(--chrome-ink);border-color:var(--chrome-acc)}
+      .step[aria-current="step"] .n{background:var(--chrome-acc);color:var(--chrome-acc-ink)}
+      .step .flag{font-size:11px;font-weight:700;color:var(--chrome-bad)}
+      .step .flag.ok{color:var(--chrome-good)}
+
+      /* ---------- layout ---------- */
+      .layout{
+        display:grid;grid-template-columns:430px minmax(0,1fr);gap:16px;
+        padding:14px 18px 30px;max-width:1560px;margin:0 auto;align-items:start;
+      }
+      @media (max-width:1020px){ .layout{grid-template-columns:1fr} }
+      .card{
+        background:var(--chrome-panel);border:1px solid var(--chrome-line);
+        border-radius:14px;box-shadow:var(--shadow);
+      }
+      .card .card-head{padding:14px 18px 0}
+      .card .card-body{padding:12px 18px 18px}
+      h2.card-title{margin:0;font-size:17px;font-weight:700}
+      .guidance{color:var(--chrome-mut);font-size:13.5px;margin:6px 0 0}
+      .guidance strong{color:var(--chrome-ink)}
+
+      /* ---------- seed panel ---------- */
+      .seed-grid{display:grid;gap:14px}
+      .seed-row label{display:block;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--chrome-faint);margin-bottom:6px}
+      .hue-track{
+        -webkit-appearance:none;appearance:none;width:100%;height:16px;border-radius:8px;border:1px solid var(--chrome-line2);
+        background:linear-gradient(90deg,oklch(.62 .17 0),oklch(.62 .17 40),oklch(.62 .17 80),oklch(.62 .17 120),oklch(.62 .17 160),oklch(.62 .17 200),oklch(.62 .17 240),oklch(.62 .17 280),oklch(.62 .17 320),oklch(.62 .17 360));
+        outline-offset:2px;
+      }
+      .hue-track::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;border:2px solid #22252b;box-shadow:0 1px 4px rgba(0,0,0,.35);cursor:pointer}
+      .hue-track::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#fff;border:2px solid #22252b;cursor:pointer}
+      .seed-val{font-size:13px;color:var(--chrome-mut)}
+      .preset-row{display:flex;flex-wrap:wrap;gap:7px}
+      .preset{
+        border:1px solid var(--chrome-line2);background:var(--chrome-panel2);border-radius:999px;
+        padding:5px 12px 5px 6px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:8px;color:var(--chrome-ink);
+      }
+      .preset .dots{display:inline-flex;border-radius:99px;overflow:hidden;border:1px solid var(--chrome-line2)}
+      .preset .dots i{width:10px;height:14px;display:block}
+      .preset:hover{border-color:var(--chrome-faint)}
+      select.harmony{
+        width:100%;padding:8px 10px;border-radius:9px;border:1px solid var(--chrome-line2);
+        background:var(--chrome-panel2);color:var(--chrome-ink);font-size:14px;font-weight:500;
+      }
+      .seed-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+      /* ---------- token rows ---------- */
+      .token-list{display:grid;gap:10px}
+      .token{
+        border:1px solid var(--chrome-line);border-radius:12px;background:var(--chrome-panel2);
+        padding:11px 12px 12px;
+      }
+      .token.hl{border-color:var(--chrome-acc)}
+      .token-top{display:flex;align-items:center;gap:10px}
+      .swatch{
+        position:relative;width:40px;height:40px;border-radius:10px;flex:none;overflow:hidden;
+        border:1px solid var(--chrome-line2);cursor:pointer;
+        background-image:linear-gradient(45deg,#c9c9c9 25%,transparent 25%),linear-gradient(-45deg,#c9c9c9 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#c9c9c9 75%),linear-gradient(-45deg,transparent 75%,#c9c9c9 75%);
+        background-size:12px 12px;background-position:0 0,0 6px,6px -6px,-6px 0;background-color:#fff;
+      }
+      .swatch .fill{position:absolute;inset:0}
+      .swatch input[type="color"]{position:absolute;inset:-8px;width:60px;height:60px;opacity:0;cursor:pointer;border:0;padding:0}
+      .token-names{min-width:0;flex:1}
+      .token-name{font-weight:600;font-size:14.5px;line-height:1.2}
+      .token-var{font-size:11.5px;color:var(--chrome-faint)}
+      .token-desc{font-size:12px;color:var(--chrome-mut);margin-top:2px;line-height:1.35}
+      .hexin{
+        width:86px;flex:none;text-align:center;font-size:12.5px;padding:6px 4px;
+        border:1px solid var(--chrome-line2);border-radius:8px;background:var(--chrome-panel);color:var(--chrome-ink);
+        text-transform:uppercase;
+      }
+      .hexin.invalid{border-color:var(--chrome-bad);color:var(--chrome-bad)}
+      .sliders{margin-top:10px;display:grid;gap:7px}
+      .slider-row{display:grid;grid-template-columns:14px 1fr 52px;align-items:center;gap:9px}
+      .slider-row .lab{font-size:11px;font-weight:700;color:var(--chrome-faint)}
+      .slider-row .val{font-size:11.5px;color:var(--chrome-mut);text-align:right}
+      input[type="range"].tok{
+        -webkit-appearance:none;appearance:none;width:100%;height:12px;border-radius:6px;border:1px solid var(--chrome-line2);outline-offset:2px;background:var(--chrome-chip);
+      }
+      input[type="range"].tok::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#fff;border:2px solid #22252b;box-shadow:0 1px 3px rgba(0,0,0,.3);cursor:pointer}
+      input[type="range"].tok::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid #22252b;cursor:pointer}
+      .gamut-note{font-size:11px;color:var(--chrome-warn);font-weight:600;display:none}
+      .gamut-note.show{display:block}
+
+      /* ---------- right column ---------- */
+      .right-col{display:grid;gap:16px;min-width:0}
+      .preview-frame{border-radius:12px;overflow:hidden;border:1px solid var(--chrome-line2)}
+      .preview-chrome{
+        display:flex;align-items:center;gap:8px;padding:8px 12px;
+        background:var(--chrome-chip);border-bottom:1px solid var(--chrome-line);
+      }
+      .preview-chrome .dot{width:10px;height:10px;border-radius:50%}
+      .preview-chrome .url{
+        flex:1;max-width:340px;margin:0 auto;text-align:center;font-size:11.5px;color:var(--chrome-mut);
+        background:var(--chrome-panel2);border:1px solid var(--chrome-line);border-radius:6px;padding:3px 10px;
+      }
+      .pv{font-family:"Outfit",system-ui,sans-serif}
+      .pv [data-tok]{transition:outline-color .12s}
+      .pv .is-hl{outline:2.5px solid #ff4d2e;outline-offset:2px;border-radius:4px}
+
+      /* ---------- audit ---------- */
+      .audit-table{display:grid;gap:0}
+      .audit-row{
+        display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:10px;align-items:center;
+        padding:9px 2px;border-bottom:1px solid var(--chrome-line);
+      }
+      .audit-row:last-child{border-bottom:0}
+      .pair-vis{display:flex;align-items:center;gap:9px;min-width:0}
+      .pair-chip{
+        width:44px;height:30px;border-radius:7px;flex:none;display:grid;place-items:center;
+        font-weight:700;font-size:13px;border:1px solid var(--chrome-line2);
+      }
+      .pair-names{font-size:13px;font-weight:600;line-height:1.25;min-width:0}
+      .pair-names small{display:block;font-weight:500;color:var(--chrome-faint);font-size:11.5px}
+      .ratio{font-size:13px;font-weight:600;text-align:right;white-space:nowrap}
+      .ratio small{display:block;font-weight:500;color:var(--chrome-faint);font-size:11px}
+      .badge{
+        font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;white-space:nowrap;text-align:center;min-width:52px;
+      }
+      .badge.pass{background:color-mix(in srgb,var(--chrome-good) 16%,transparent);color:var(--chrome-good)}
+      .badge.fail{background:color-mix(in srgb,var(--chrome-bad) 14%,transparent);color:var(--chrome-bad)}
+      .badge.mid{background:color-mix(in srgb,var(--chrome-warn) 16%,transparent);color:var(--chrome-warn)}
+      @media (max-width:560px){
+        .audit-row{grid-template-columns:minmax(0,1fr) auto}
+        .audit-row .fixcell{grid-column:1/-1}
+      }
+
+      /* ---------- export ---------- */
+      .export-tabs{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+      .codebox{
+        margin:12px 0 0;background:#141519;color:#e8eaf0;border-radius:10px;padding:14px 16px;
+        font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;line-height:1.65;
+        overflow:auto;max-height:420px;white-space:pre;
+      }
+      @media (prefers-color-scheme: dark){ .codebox{background:#0c0d10} }
+      .export-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center}
+      .toast{
+        position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(16px);
+        background:#1d1f24;color:#f2f3f5;padding:9px 18px;border-radius:99px;font-size:13.5px;font-weight:600;
+        opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:99;box-shadow:0 8px 30px rgba(0,0,0,.3);
+      }
+      .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+      .stat-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+      .stat{
+        flex:1;min-width:110px;border:1px solid var(--chrome-line);border-radius:10px;background:var(--chrome-panel2);
+        padding:10px 12px;text-align:center;
+      }
+      .stat .big{font-size:22px;font-weight:700;line-height:1.1}
+      .stat .lbl{font-size:11.5px;color:var(--chrome-faint);font-weight:600}
+      .foot-note{color:var(--chrome-faint);font-size:12px;margin-top:10px}
+      .card{scroll-margin-top:72px}
+      #previewModeLabel,#auditModeLabel{font-weight:700;color:var(--chrome-ink)}
+      .pv-mode-pill{
+        font-size:10.5px;font-weight:800;letter-spacing:.07em;padding:2.5px 9px;border-radius:99px;flex:none;
+        background:var(--pv-bg);color:var(--pv-text);border:1.5px solid var(--pv-border-strong);
+      }
+
+      /* ---------- sticky mobile workspace bar (live mini preview + mode badge) ---------- */
+      .mobile-bar{display:none}
+      .mini-pv{
+        flex:1;min-width:0;display:flex;align-items:center;gap:8px;text-align:left;overflow:hidden;
+        border:1px solid var(--chrome-line2);border-radius:10px;padding:5px 9px;
+        background:var(--pv-bg);
+      }
+      .mini-card{display:inline-flex;align-items:center;gap:7px;flex:none;background:var(--pv-surface);border:1px solid var(--pv-border);border-radius:7px;padding:3px 8px}
+      .mini-aa{font-weight:700;font-size:13px;line-height:1;color:var(--pv-text)}
+      .mini-btn{background:var(--pv-primary);color:var(--pv-on-primary);font-size:11px;font-weight:700;padding:2.5px 8px;border-radius:99px;line-height:1.2}
+      .mini-dot{width:11px;height:11px;border-radius:50%;background:var(--pv-accent);flex:none}
+      .mini-cap{font-size:11px;color:var(--pv-text-muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+      .mini-mode{
+        flex:none;border-radius:10px;padding:5px 12px;font-size:12px;font-weight:800;letter-spacing:.05em;
+        background:var(--pv-surface);color:var(--pv-text);border:1.5px solid var(--pv-border-strong);
+      }
+      @media (max-width:1020px){
+        .mobile-bar{display:flex;flex-basis:100%;min-width:0;align-items:stretch;gap:9px}
+        .card{scroll-margin-top:150px}
+        .topbar{padding:8px 12px;gap:8px}
+        .stepper{flex-wrap:nowrap;overflow-x:auto;padding:10px 12px 4px;scrollbar-width:none}
+        .stepper::-webkit-scrollbar{display:none}
+        .step{flex:none;padding:6px 11px 6px 7px;font-size:12.5px}
+        .layout{padding:12px 12px 24px}
+      }
+      @media (max-width:560px){
+        .mini-cap{display:none}
+        .mini-mode{padding:5px 10px}
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="wordmark">
+        <span class="swatches" aria-hidden="true"><span style="background:#b3402a"></span><span style="background:#2a7ab3"></span><span style="background:#3f9e57"></span><span style="background:#e0a83e"></span></span>
+        Color Token Workshop
+      </div>
+      <div class="spacer"></div>
+      <span class="editing-label" aria-hidden="true">Editing</span>
+      <div class="seg" role="group" aria-label="Palette being edited">
+        <button id="modeLight" aria-pressed="true">Light</button>
+        <button id="modeDark" aria-pressed="false">Dark</button>
+      </div>
+      <button class="btn" id="diceBtn" title="Random seed palette">Random seed</button>
+      <button class="btn primary" id="exportJump">Export CSS</button>
+      <div class="mobile-bar" id="mobileBar">
+        <button class="mini-pv" id="miniPreview" title="Jump to the full live preview" aria-label="Live preview sample — jump to the full preview">
+          <span class="mini-card"><span class="mini-aa">Aa</span><span class="mini-btn">Button</span><span class="mini-dot"></span></span>
+          <span class="mini-cap">Live preview — tap for full view</span>
+        </button>
+        <button class="mini-mode" id="miniMode" title="Tap to switch the palette you are editing">LIGHT PALETTE</button>
+      </div>
+    </header>
+
+    <nav class="stepper" id="stepper" aria-label="Workshop steps"></nav>
+
+    <div class="layout">
+      <!-- ===== left: guided editor ===== -->
+      <section class="card" aria-label="Token editor">
+        <div class="card-head">
+          <h2 class="card-title" id="stepTitle">Step</h2>
+          <p class="guidance" id="stepGuidance"></p>
+        </div>
+        <div class="card-body">
+          <!-- seed controls -->
+          <div id="seedPanel" class="seed-grid" hidden>
+            <div class="seed-row">
+              <label for="seedHue">Brand hue — <span class="seed-val mono" id="seedHueVal"></span></label>
+              <input type="range" class="hue-track" id="seedHue" min="0" max="360" step="1" value="18" />
+            </div>
+            <div class="seed-row">
+              <label for="seedSat">Color intensity — <span class="seed-val mono" id="seedSatVal"></span></label>
+              <input type="range" class="tok" id="seedSat" min="0" max="100" step="1" value="62" style="background:linear-gradient(90deg,#9a9a9e,#d84f2f)" />
+            </div>
+            <div class="seed-row">
+              <label for="seedHarmony">Accent harmony</label>
+              <select class="harmony" id="seedHarmony">
+                <option value="180">Complementary — accent opposite the brand hue (bold, high energy)</option>
+                <option value="150">Split-complementary — softer contrast, easier to balance</option>
+                <option value="120">Triadic — three evenly spaced hues (playful, colorful)</option>
+                <option value="32">Analogous — accent sits next to the brand hue (calm, cohesive)</option>
+                <option value="0">Monochrome — accent is a shade of the brand hue itself</option>
+              </select>
+            </div>
+            <div class="seed-row">
+              <label>Starting points</label>
+              <div class="preset-row" id="presetRow"></div>
+            </div>
+            <div class="seed-actions">
+              <button class="btn primary" id="generateBtn">Generate both palettes</button>
+              <button class="btn" id="deriveDarkBtn" title="Build the dark palette by inverting the lightness of your light palette">Derive dark from light</button>
+            </div>
+            <p class="foot-note">Generating rebuilds every token in <strong>both</strong> modes from the seed, using OKLCH so steps stay perceptually even. Fine-tune individual tokens in the steps that follow — nothing here is locked in.</p>
+          </div>
+
+          <!-- token editor -->
+          <div id="tokenPanel" class="token-list"></div>
+
+          <!-- review panel -->
+          <div id="reviewPanel" hidden>
+            <div class="stat-row">
+              <div class="stat"><div class="big" id="statAA">–</div><div class="lbl">pairs pass WCAG AA</div></div>
+              <div class="stat"><div class="big" id="statAAA">–</div><div class="lbl">pairs pass WCAG AAA</div></div>
+              <div class="stat"><div class="big" id="statFix">–</div><div class="lbl">pairs need a fix</div></div>
+            </div>
+            <p class="guidance" style="margin-top:12px">The audit on the right checks the palette you are editing (light or dark) pair by pair. <strong>Fix</strong> adjusts OKLCH lightness only — hue and chroma stay yours. It moves the foreground first; if that would break a sibling pair (button text must pass on the hover fill too), it moves the fill instead. When everything passes, export the tokens below the audit.</p>
+            <div class="seed-actions" style="margin-top:12px">
+              <button class="btn" id="fixAllBtn">Fix all failing pairs</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== right: preview + audit + export ===== -->
+      <div class="right-col">
+        <section class="card" id="previewCard" aria-label="Live preview">
+          <div class="card-head" style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+            <h2 class="card-title">Live preview</h2>
+            <span class="guidance" style="margin:0" id="previewModeLabel"></span>
+            <span style="flex:1"></span>
+            <span class="guidance" style="margin:0">Hover a token to spotlight where it is used.</span>
+          </div>
+          <div class="card-body">
+            <div class="preview-frame" id="previewFrame">
+              <div class="preview-chrome">
+                <span class="dot" style="background:#e0654a" aria-hidden="true"></span>
+                <span class="dot" style="background:#e0a83e" aria-hidden="true"></span>
+                <span class="dot" style="background:#4cc084" aria-hidden="true"></span>
+                <span class="url mono" aria-hidden="true">yourbrand.example</span>
+                <span class="pv-mode-pill" id="pvModePill">LIGHT</span>
+              </div>
+              <div class="pv" id="preview"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card" aria-label="Contrast audit">
+          <div class="card-head" style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+            <h2 class="card-title">Contrast audit</h2>
+            <span class="guidance" style="margin:0" id="auditModeLabel"></span>
+            <span style="flex:1"></span>
+            <button class="btn small" id="fixAllBtn2">Fix all</button>
+          </div>
+          <div class="card-body">
+            <div class="audit-table" id="auditTable"></div>
+            <p class="foot-note">Ratios are WCAG 2.1 contrast; Lc is the APCA (WCAG 3 draft) lightness-contrast score — roughly, Lc 60+ suits body text, Lc 45+ suits large text and headlines. Fixes target the WCAG AA threshold for each pair.</p>
+          </div>
+        </section>
+
+        <section class="card" id="exportCard" aria-label="Export">
+          <div class="card-head">
+            <h2 class="card-title">Export tokens</h2>
+            <p class="guidance">Both palettes, ready to paste into a stylesheet. Dark values sit behind <span class="mono">[data-theme="dark"]</span> — or flip the format to use a <span class="mono">prefers-color-scheme</span> media query instead.</p>
+          </div>
+          <div class="card-body">
+            <div class="export-tabs">
+              <div class="seg" role="group" aria-label="Export format">
+                <button id="fmtCss" aria-pressed="true">CSS variables</button>
+                <button id="fmtJson" aria-pressed="false">JSON</button>
+              </div>
+              <div class="seg" role="group" aria-label="Color notation" id="notationSeg">
+                <button id="notOklch" aria-pressed="true">OKLCH</button>
+                <button id="notHex" aria-pressed="false">Hex</button>
+              </div>
+              <div class="seg" role="group" aria-label="Dark mode selector" id="darkSeg">
+                <button id="darkAttr" aria-pressed="true">[data-theme]</button>
+                <button id="darkMedia" aria-pressed="false">Media query</button>
+              </div>
+            </div>
+            <pre class="codebox" id="exportBox" tabindex="0"></pre>
+            <div class="export-actions">
+              <button class="btn primary" id="copyBtn">Copy to clipboard</button>
+              <button class="btn" id="downloadBtn">Download file</button>
+              <span class="guidance" style="margin:0" id="exportMeta"></span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status"></div>
+
+    <script>
+    "use strict";
+    /* ================= color math (OKLCH / sRGB / WCAG / APCA) ================= */
+    const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+    const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+    function oklchToLinear(l, c, hDeg) {
+      const hr = hDeg * D2R, a = c * Math.cos(hr), b = c * Math.sin(hr);
+      const L = l + 0.3963377774 * a + 0.2158037573 * b;
+      const M = l - 0.1055613458 * a - 0.0638541728 * b;
+      const S = l - 0.0894841775 * a - 1.2914855480 * b;
+      const l3 = L * L * L, m3 = M * M * M, s3 = S * S * S;
+      return [
+        +4.0767416621 * l3 - 3.3077115913 * m3 + 0.2309699292 * s3,
+        -1.2684380046 * l3 + 2.6097574011 * m3 - 0.3413193965 * s3,
+        -0.0041960863 * l3 - 0.7034186147 * m3 + 1.7076147010 * s3
+      ];
+    }
+    function linearToSrgb255(lin) {
+      return lin.map(v => {
+        const c = clamp(v, 0, 1);
+        const s = c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+        return Math.round(clamp(s, 0, 1) * 255);
+      });
+    }
+    function oklchToRgb255(col) { return linearToSrgb255(oklchToLinear(col.l, col.c, col.h)); }
+    function rgb255ToHex(rgb) { return "#" + rgb.map(v => v.toString(16).padStart(2, "0")).join("").toUpperCase(); }
+    function oklchToHex(col) { return rgb255ToHex(oklchToRgb255(col)); }
+    function inGamut(l, c, h) {
+      return oklchToLinear(l, c, h).every(v => v >= -0.0005 && v <= 1.0005);
+    }
+    function gamutC(l, c, h) {
+      if (inGamut(l, c, h)) return c;
+      let lo = 0, hi = c;
+      for (let i = 0; i < 24; i++) { const mid = (lo + hi) / 2; if (inGamut(l, mid, h)) lo = mid; else hi = mid; }
+      return lo;
+    }
+    function displayCol(col) { return { l: col.l, c: gamutC(col.l, col.c, col.h), h: col.h }; }
+    function oklchCss(col) {
+      const d = displayCol(col);
+      return "oklch(" + d.l.toFixed(3) + " " + d.c.toFixed(3) + " " + d.h.toFixed(1) + ")";
+    }
+    function hexToRgb255(hex) {
+      let s = hex.trim().replace(/^#/, "");
+      if (/^[0-9a-fA-F]{3}$/.test(s)) s = s.split("").map(ch => ch + ch).join("");
+      if (!/^[0-9a-fA-F]{6}$/.test(s)) return null;
+      return [parseInt(s.slice(0, 2), 16), parseInt(s.slice(2, 4), 16), parseInt(s.slice(4, 6), 16)];
+    }
+    function srgb255ToLinear(rgb) {
+      return rgb.map(v => { const s = v / 255; return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4); });
+    }
+    function rgb255ToOklch(rgb) {
+      const [r, g, b] = srgb255ToLinear(rgb);
+      const L = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+      const M = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+      const S = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+      const labL = 0.2104542553 * L + 0.7936177850 * M - 0.0040720468 * S;
+      const a = 1.9779984951 * L - 2.4285922050 * M + 0.4505937099 * S;
+      const bb = 0.0259040371 * L + 0.7827717662 * M - 0.8086757660 * S;
+      let h = Math.atan2(bb, a) * R2D; if (h < 0) h += 360;
+      return { l: clamp(labL, 0, 1), c: Math.hypot(a, bb), h };
+    }
+    function relLum(rgb) { const [r, g, b] = srgb255ToLinear(rgb); return 0.2126 * r + 0.7152 * g + 0.0722 * b; }
+    function wcagRatio(fg, bg) {
+      const l1 = relLum(fg), l2 = relLum(bg);
+      return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+    }
+    function apcaLc(fg, bg) {
+      const soft = y => y <= 0.022 ? y + Math.pow(0.022 - y, 1.414) : y;
+      const Yt = soft(relLum(fg)), Yb = soft(relLum(bg));
+      if (Math.abs(Yb - Yt) < 0.0005) return 0;
+      let s;
+      if (Yb > Yt) { s = (Math.pow(Yb, 0.56) - Math.pow(Yt, 0.57)) * 1.14; return (s <= 0.1 ? 0 : s - 0.027) * 100; }
+      s = (Math.pow(Yb, 0.65) - Math.pow(Yt, 0.62)) * 1.14; return (s >= -0.1 ? 0 : s + 0.027) * 100;
+    }
+    /* Solve: nudge a token's OKLCH lightness until its WCAG ratio vs a fixed bg hits target. */
+    function solveLightness(fg, bgRgb, target) {
+      const ratioAt = l => wcagRatio(oklchToRgb255({ l, c: fg.c, h: fg.h }), bgRgb);
+      if (ratioAt(fg.l) >= target) return fg.l;
+      const darker = relLum(oklchToRgb255(fg)) < relLum(bgRgb);
+      const dir = darker ? -1 : 1;
+      let edge = dir < 0 ? 0 : 1;
+      if (ratioAt(edge) < target) edge = dir < 0 ? 1 : 0;      // opposite direction is the only hope
+      if (ratioAt(edge) < target) return edge;                  // unreachable: return best effort
+      let lo = fg.l, hi = edge;
+      for (let i = 0; i < 28; i++) { const mid = (lo + hi) / 2; if (ratioAt(mid) >= target) hi = mid; else lo = mid; }
+      return hi;
+    }
+
+    /* ================= token model ================= */
+    const GROUPS = {
+      foundation: { step: "Foundation", tokens: ["bg", "surface", "surfaceRaised", "border", "borderStrong"] },
+      text:       { step: "Text & links", tokens: ["text", "textMuted", "textFaint", "textInverse", "link"] },
+      brand:      { step: "Brand & actions", tokens: ["primary", "primaryHover", "primaryActive", "onPrimary", "secondary", "onSecondary", "accent", "onAccent", "focus"] },
+      semantic:   { step: "Semantic", tokens: ["success", "onSuccess", "warning", "onWarning", "danger", "onDanger", "info", "onInfo"] }
+    };
+    const TOKEN_DEFS = {
+      bg:            { name: "Background", desc: "The page canvas. Everything else is judged against this first." },
+      surface:       { name: "Surface", desc: "Cards, panels and menus that sit on the background." },
+      surfaceRaised: { name: "Surface raised", desc: "Popovers, modals and hover states — one step above surface." },
+      border:        { name: "Border", desc: "Hairline dividers and card outlines. Quiet, but visible on purpose." },
+      borderStrong:  { name: "Border strong", desc: "Input outlines and emphasized separators that must read as interactive edges." },
+      text:          { name: "Text", desc: "Headings and body copy. Your highest-contrast obligation." },
+      textMuted:     { name: "Text muted", desc: "Secondary copy: descriptions, captions, table cells." },
+      textFaint:     { name: "Text faint", desc: "Timestamps, placeholders, footnotes. Still text — it still needs contrast." },
+      textInverse:   { name: "Text inverse", desc: "Text placed on dark or saturated fills (toasts, dark footers)." },
+      link:          { name: "Link", desc: "Inline links. Must stand apart from body text by more than color alone in real use." },
+      primary:       { name: "Primary", desc: "The main action: primary buttons, active states, key highlights." },
+      primaryHover:  { name: "Primary hover", desc: "Primary action while hovered — usually a small lightness step." },
+      primaryActive: { name: "Primary active", desc: "Primary action while pressed — one step further than hover." },
+      onPrimary:     { name: "On primary", desc: "Text and icons sitting on the primary fill." },
+      secondary:     { name: "Secondary", desc: "The quieter action next to primary: cancel, back, alternative paths." },
+      onSecondary:   { name: "On secondary", desc: "Text and icons sitting on the secondary fill." },
+      accent:        { name: "Accent", desc: "Sparingly used highlight: badges, charts, the one thing you want noticed." },
+      onAccent:      { name: "On accent", desc: "Text and icons sitting on the accent fill." },
+      focus:         { name: "Focus ring", desc: "Keyboard focus outline. Needs 3:1 against whatever it lands on." },
+      success:       { name: "Success", desc: "Confirmations and positive status. Fill for banners, text for inline messages." },
+      onSuccess:     { name: "On success", desc: "Text on a solid success fill." },
+      warning:       { name: "Warning", desc: "Caution states — needs attention, not alarm." },
+      onWarning:     { name: "On warning", desc: "Text on a solid warning fill (often near-black, not white)." },
+      danger:        { name: "Danger", desc: "Errors and destructive actions." },
+      onDanger:      { name: "On danger", desc: "Text on a solid danger fill." },
+      info:          { name: "Info", desc: "Neutral notices and helpful asides." },
+      onInfo:        { name: "On info", desc: "Text on a solid info fill." }
+    };
+    const ALL_KEYS = Object.keys(TOKEN_DEFS);
+    const kebab = k => k.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
+
+    /* fg/bg pairs checked by the audit. min = WCAG AA threshold for that use. */
+    const PAIRS = [
+      { fg: "text",       bg: "bg",           label: "Body text on background",    min: 4.5, aaa: 7 },
+      { fg: "text",       bg: "surface",      label: "Body text on cards",         min: 4.5, aaa: 7 },
+      { fg: "textMuted",  bg: "bg",           label: "Muted text on background",   min: 4.5, aaa: 7 },
+      { fg: "textMuted",  bg: "surface",      label: "Muted text on cards",        min: 4.5, aaa: 7 },
+      { fg: "textFaint",  bg: "bg",           label: "Faint text on background",   min: 4.5, aaa: 7 },
+      { fg: "link",       bg: "bg",           label: "Links on background",        min: 4.5, aaa: 7 },
+      { fg: "link",       bg: "surface",      label: "Links on cards",             min: 4.5, aaa: 7 },
+      { fg: "onPrimary",  bg: "primary",      label: "Text on primary button",     min: 4.5, aaa: 7 },
+      { fg: "onPrimary",  bg: "primaryHover", label: "Text on primary (hover)",    min: 4.5, aaa: 7 },
+      { fg: "onSecondary",bg: "secondary",    label: "Text on secondary button",   min: 4.5, aaa: 7 },
+      { fg: "onAccent",   bg: "accent",       label: "Text on accent badge",       min: 4.5, aaa: 7 },
+      { fg: "onSuccess",  bg: "success",      label: "Text on success fill",       min: 4.5, aaa: 7 },
+      { fg: "onWarning",  bg: "warning",      label: "Text on warning fill",       min: 4.5, aaa: 7 },
+      { fg: "onDanger",   bg: "danger",       label: "Text on danger fill",        min: 4.5, aaa: 7 },
+      { fg: "onInfo",     bg: "info",         label: "Text on info fill",          min: 4.5, aaa: 7 },
+      { fg: "success",    bg: "bg",           label: "Success text on background", min: 4.5, aaa: 7 },
+      { fg: "danger",     bg: "bg",           label: "Error text on background",   min: 4.5, aaa: 7 },
+      { fg: "warning",    bg: "bg",           label: "Warning text on background", min: 4.5, aaa: 7 },
+      { fg: "textInverse",bg: "primary",      label: "Inverse text on brand fill", min: 4.5, aaa: 7 },
+      { fg: "primary",    bg: "bg",           label: "Primary UI on background",   min: 3,   aaa: 4.5, graphic: true },
+      { fg: "focus",      bg: "bg",           label: "Focus ring on background",   min: 3,   aaa: 4.5, graphic: true },
+      { fg: "focus",      bg: "surface",      label: "Focus ring on cards",        min: 3,   aaa: 4.5, graphic: true },
+      { fg: "borderStrong",bg: "bg",          label: "Strong border / inputs",     min: 3,   aaa: 4.5, graphic: true }
+    ];
+
+    const STEPS = [
+      { id: "seed", title: "Seed & harmony", guidance: "Start from one decision: your <strong>brand hue</strong>. Neutrals get a whisper of that hue so grays feel related instead of pasted on, the accent is placed by the <strong>harmony</strong> you pick, and every lightness step is computed in OKLCH so the scale stays perceptually even." },
+      { id: "foundation", title: "Foundation", guidance: "Surfaces first, because every contrast judgment depends on them. Keep <strong>background → surface → raised</strong> as small, even steps: if two layers blur together, content grouping disappears. Borders should be findable, not loud." },
+      { id: "text", title: "Text & links", guidance: "Three tiers of text, each a deliberate step down — but <strong>even faint text must clear 4.5:1</strong> if it carries information. Links need contrast against the page <em>and</em> a visible difference from body text." },
+      { id: "brand", title: "Brand & actions", guidance: "Primary is the color your brand is remembered by. Hover and active are small lightness moves in the same hue — the audit checks button text on <strong>all three</strong>. The focus ring is a separate token because it must survive on every surface." },
+      { id: "semantic", title: "Semantic colors", guidance: "Status colors carry meaning before words are read, so keep their hues conventional (green/amber/red/blue) even when the brand hue is exotic. Each one needs a legible <strong>on-</strong> partner for solid fills — on warning, that's usually near-black, not white." },
+      { id: "review", title: "Audit & export", guidance: "Every foreground/background pairing your UI actually produces, checked against WCAG AA and AAA plus APCA. Fix what fails, then export both palettes." }
+    ];
+
+    const PRESETS = [
+      { name: "Ember",      hue: 18,  sat: 62, harmony: 180 },
+      { name: "Harbor",     hue: 232, sat: 58, harmony: 32 },
+      { name: "Meadow",     hue: 148, sat: 48, harmony: 120 },
+      { name: "Orchid",     hue: 322, sat: 55, harmony: 150 },
+      { name: "Solar",      hue: 78,  sat: 66, harmony: 180 },
+      { name: "Slate mono", hue: 258, sat: 16, harmony: 0 }
+    ];
+
+    /* Fix one pair inside a palette object. Moves the foreground's lightness first;
+       if that would break another pair sharing the same foreground (e.g. on-primary
+       must satisfy both primary and primary-hover fills), revert and move the
+       background fill away from the foreground instead. Returns true if it changed anything. */
+    function resolvePairIn(pal, p) {
+      const fg = pal[p.fg];
+      const ratio = q => wcagRatio(oklchToRgb255(pal[q.fg]), oklchToRgb255(pal[q.bg]));
+      if (ratio(p) >= p.min) return false;
+      const sibs = PAIRS.filter(q => q.fg === p.fg);
+      const before = sibs.map(q => ratio(q) >= q.min);
+      const oldL = fg.l;
+      fg.l = solveLightness(fg, oklchToRgb255(pal[p.bg]), p.min);
+      const broke = sibs.some((q, i) => before[i] && ratio(q) < q.min);
+      if (broke) {
+        fg.l = oldL;
+        const bgT = pal[p.bg];
+        bgT.l = solveLightness(bgT, oklchToRgb255(fg), p.min);
+      }
+      return true;
+    }
+
+    /* ================= palette generation ================= */
+    function onColorFor(fill) {
+      const rgb = oklchToRgb255(fill);
+      const light = { l: 0.985, c: 0.004, h: fill.h }, dark = { l: 0.16, c: 0.012, h: fill.h };
+      return wcagRatio(oklchToRgb255(dark), rgb) > wcagRatio(oklchToRgb255(light), rgb) ? dark : light;
+    }
+    function generatePalettes(hue, sat, harmonyDeg) {
+      const s = sat / 100;
+      const brandC = 0.055 + s * 0.125;
+      const accH = (hue + harmonyDeg) % 360;
+      const mk = dark => {
+        const nC = 0.006 + s * 0.016;                       // neutral tint chroma
+        const P = (l, c, h) => ({ l, c, h: ((h % 360) + 360) % 360 });
+        const pal = {};
+        if (!dark) {
+          pal.bg = P(0.972, nC, hue); pal.surface = P(0.995, nC * 0.7, hue); pal.surfaceRaised = P(1.0, 0, hue);
+          pal.border = P(0.885, nC * 1.2, hue); pal.borderStrong = P(0.72, nC * 1.6, hue);
+          pal.text = P(0.235, nC * 2.2, hue); pal.textMuted = P(0.46, nC * 2, hue); pal.textFaint = P(0.585, nC * 1.8, hue);
+          pal.textInverse = P(0.985, nC * 0.5, hue); pal.link = P(0.47, brandC * 0.92, hue);
+          pal.primary = P(0.545, brandC, hue); pal.primaryHover = P(0.485, brandC, hue); pal.primaryActive = P(0.425, brandC * 1.02, hue);
+          pal.secondary = P(0.925, 0.014 + s * 0.02, hue); pal.onSecondary = P(0.32, brandC * 0.55, hue);
+          pal.accent = P(0.56, 0.05 + s * 0.11, accH);
+          pal.success = P(0.52, 0.125, 152); pal.warning = P(0.66, 0.135, 76); pal.danger = P(0.535, 0.165, 27); pal.info = P(0.55, 0.115, 243);
+          pal.focus = P(0.55, brandC, accH === hue ? hue : accH);
+        } else {
+          pal.bg = P(0.185, nC, hue); pal.surface = P(0.225, nC, hue); pal.surfaceRaised = P(0.275, nC, hue);
+          pal.border = P(0.335, nC * 1.2, hue); pal.borderStrong = P(0.47, nC * 1.6, hue);
+          pal.text = P(0.93, nC * 1.4, hue); pal.textMuted = P(0.74, nC * 1.5, hue); pal.textFaint = P(0.615, nC * 1.6, hue);
+          pal.textInverse = P(0.2, nC * 1.5, hue); pal.link = P(0.76, brandC * 0.9, hue);
+          pal.primary = P(0.70, brandC * 0.94, hue); pal.primaryHover = P(0.755, brandC * 0.94, hue); pal.primaryActive = P(0.64, brandC * 0.97, hue);
+          pal.secondary = P(0.30, 0.014 + s * 0.02, hue); pal.onSecondary = P(0.88, brandC * 0.4, hue);
+          pal.accent = P(0.72, 0.05 + s * 0.105, accH);
+          pal.success = P(0.70, 0.125, 152); pal.warning = P(0.76, 0.13, 78); pal.danger = P(0.665, 0.155, 25); pal.info = P(0.71, 0.11, 243);
+          pal.focus = P(0.72, brandC * 0.94, accH === hue ? hue : accH);
+        }
+        pal.onPrimary = onColorFor(pal.primary);
+        pal.onAccent = onColorFor(pal.accent);
+        pal.onSuccess = onColorFor(pal.success);
+        pal.onWarning = onColorFor(pal.warning);
+        pal.onDanger = onColorFor(pal.danger);
+        pal.onInfo = onColorFor(pal.info);
+        /* guarantee the generated palette starts AA-clean: auto-solve any offender */
+        for (let pass = 0; pass < 4; pass++) {
+          let dirty = false;
+          for (const p of PAIRS) if (resolvePairIn(pal, p)) dirty = true;
+          if (!dirty) break;
+        }
+        return pal;
+      };
+      return { light: mk(false), dark: mk(true) };
+    }
+    </script>
+
+    <script>
+    "use strict";
+    /* ================= preview markup (every element tagged with the tokens it uses) ================= */
+    function buildPreview() {
+      return `
+      <div data-tok="bg" style="background:var(--pv-bg);color:var(--pv-text);padding:0 0 18px;font-size:14px">
+        <div data-tok="surface border" style="background:var(--pv-surface);border-bottom:1px solid var(--pv-border);display:flex;align-items:center;gap:14px;padding:11px 18px;flex-wrap:wrap">
+          <span data-tok="primary" style="width:24px;height:24px;border-radius:7px;background:var(--pv-primary);display:inline-block;flex:none"></span>
+          <strong style="font-size:15.5px">Brand</strong>
+          <span data-tok="link" style="color:var(--pv-link);font-weight:600">Products</span>
+          <span style="color:var(--pv-text-muted)">Pricing</span>
+          <span style="color:var(--pv-text-muted)">Docs</span>
+          <span style="flex:1"></span>
+          <span data-tok="secondary onSecondary" style="background:var(--pv-secondary);color:var(--pv-on-secondary);padding:6px 13px;border-radius:8px;font-weight:600">Sign in</span>
+          <span data-tok="primary onPrimary" style="background:var(--pv-primary);color:var(--pv-on-primary);padding:6px 13px;border-radius:8px;font-weight:600">Get started</span>
+        </div>
+
+        <div style="padding:26px 22px 6px;max-width:560px">
+          <span data-tok="accent onAccent" style="background:var(--pv-accent);color:var(--pv-on-accent);font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:99px">NEW · v2.0 is live</span>
+          <h3 style="margin:13px 0 7px;font-size:27px;line-height:1.15;font-weight:700">Ship the thing your users actually asked for.</h3>
+          <p data-tok="textMuted" style="margin:0;color:var(--pv-text-muted);line-height:1.55">The platform that turns a messy roadmap into a calm, focused product — without another dashboard to babysit.</p>
+          <div style="display:flex;gap:9px;margin-top:16px;flex-wrap:wrap">
+            <span data-tok="primaryHover onPrimary" style="background:var(--pv-primary-hover);color:var(--pv-on-primary);padding:9px 17px;border-radius:9px;font-weight:600">Start free trial</span>
+            <span data-tok="borderStrong" style="border:1.5px solid var(--pv-border-strong);padding:9px 17px;border-radius:9px;font-weight:600">Watch demo</span>
+          </div>
+          <p data-tok="textFaint" style="margin:11px 0 0;color:var(--pv-text-faint);font-size:12px">No credit card required · Cancel anytime</p>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:13px;padding:16px 18px 0">
+          <div data-tok="surface border" style="background:var(--pv-surface);border:1px solid var(--pv-border);border-radius:13px;padding:15px 16px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <strong>Weekly report</strong>
+              <span data-tok="success" style="color:var(--pv-success);font-weight:700;font-size:12.5px">▲ 12.4%</span>
+            </div>
+            <p data-tok="textMuted" style="color:var(--pv-text-muted);margin:5px 0 12px;font-size:13px">Active workspaces this week</p>
+            <div style="display:flex;align-items:flex-end;gap:5px;height:52px">
+              <span data-tok="primary" style="flex:1;height:38%;background:var(--pv-primary);opacity:.45;border-radius:3px 3px 0 0"></span>
+              <span data-tok="primary" style="flex:1;height:55%;background:var(--pv-primary);opacity:.6;border-radius:3px 3px 0 0"></span>
+              <span data-tok="primary" style="flex:1;height:47%;background:var(--pv-primary);opacity:.6;border-radius:3px 3px 0 0"></span>
+              <span data-tok="primary" style="flex:1;height:72%;background:var(--pv-primary);opacity:.85;border-radius:3px 3px 0 0"></span>
+              <span data-tok="accent" style="flex:1;height:92%;background:var(--pv-accent);border-radius:3px 3px 0 0"></span>
+            </div>
+            <div data-tok="border" style="border-top:1px solid var(--pv-border);margin-top:12px;padding-top:9px;display:flex;justify-content:space-between;font-size:12px">
+              <span data-tok="textFaint" style="color:var(--pv-text-faint)">Progress to goal</span><strong>68%</strong>
+            </div>
+            <div data-tok="border" style="height:7px;border-radius:99px;background:var(--pv-border);margin-top:7px;overflow:hidden">
+              <div data-tok="primary" style="width:68%;height:100%;background:var(--pv-primary)"></div>
+            </div>
+          </div>
+
+          <div data-tok="surfaceRaised border" style="background:var(--pv-surface-raised);border:1px solid var(--pv-border);border-radius:13px;padding:15px 16px">
+            <strong>Create account</strong>
+            <label style="display:block;margin:11px 0 4px;font-size:12.5px;font-weight:600">Email</label>
+            <div data-tok="borderStrong bg" style="border:1.5px solid var(--pv-border-strong);background:var(--pv-bg);border-radius:8px;padding:7px 10px;font-size:13px">you@company.com</div>
+            <label style="display:block;margin:11px 0 4px;font-size:12.5px;font-weight:600">Password</label>
+            <div data-tok="focus" style="border:1.5px solid var(--pv-border-strong);outline:2.5px solid var(--pv-focus);outline-offset:1.5px;border-radius:8px;padding:7px 10px;font-size:13px">••••••••••</div>
+            <p data-tok="danger" style="color:var(--pv-danger);margin:6px 0 0;font-size:12px;font-weight:600">Password must be at least 12 characters.</p>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:11px">
+              <span data-tok="primary onPrimary" style="width:34px;height:19px;border-radius:99px;background:var(--pv-primary);position:relative;display:inline-block;flex:none"><span data-tok="onPrimary" style="position:absolute;right:2.5px;top:2.5px;width:14px;height:14px;border-radius:50%;background:var(--pv-on-primary)"></span></span>
+              <span style="font-size:13px">Email me product updates</span>
+            </div>
+            <span data-tok="primary onPrimary" style="display:block;text-align:center;background:var(--pv-primary);color:var(--pv-on-primary);padding:8px;border-radius:9px;font-weight:600;margin-top:13px">Create account</span>
+            <p style="text-align:center;margin:9px 0 0;font-size:12.5px;color:var(--pv-text-muted)">Already have an account? <span data-tok="link" style="color:var(--pv-link);font-weight:600">Log in</span></p>
+          </div>
+        </div>
+
+        <div style="display:grid;gap:8px;padding:14px 18px 0">
+          <div data-tok="success onSuccess" style="border:1px solid var(--pv-success);color:var(--pv-success);border-radius:10px;padding:8px 13px;font-size:13px;display:flex;gap:9px;align-items:center;flex-wrap:wrap"><strong>✓ Saved.</strong><span>Your changes are live.</span><span style="flex:1"></span><span data-tok="success" style="background:var(--pv-success);color:var(--pv-on-success);font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px">SOLID</span></div>
+          <div data-tok="warning onWarning" style="border:1px solid var(--pv-warning);color:var(--pv-warning);border-radius:10px;padding:8px 13px;font-size:13px;display:flex;gap:9px;align-items:center;flex-wrap:wrap"><strong>Heads up.</strong><span>Your trial ends in 3 days.</span><span style="flex:1"></span><span data-tok="warning" style="background:var(--pv-warning);color:var(--pv-on-warning);font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px">SOLID</span></div>
+          <div data-tok="danger onDanger" style="border:1px solid var(--pv-danger);color:var(--pv-danger);border-radius:10px;padding:8px 13px;font-size:13px;display:flex;gap:9px;align-items:center;flex-wrap:wrap"><strong>Payment failed.</strong><span>Update your card to keep service.</span><span style="flex:1"></span><span data-tok="danger" style="background:var(--pv-danger);color:var(--pv-on-danger);font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px">SOLID</span></div>
+          <div data-tok="info onInfo" style="border:1px solid var(--pv-info);color:var(--pv-info);border-radius:10px;padding:8px 13px;font-size:13px;display:flex;gap:9px;align-items:center;flex-wrap:wrap"><strong>Tip.</strong><span>Keyboard shortcuts are under Settings.</span><span style="flex:1"></span><span data-tok="info" style="background:var(--pv-info);color:var(--pv-on-info);font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px">SOLID</span></div>
+        </div>
+
+        <div data-tok="surface border" style="margin:14px 18px 0;background:var(--pv-surface);border:1px solid var(--pv-border);border-radius:13px;overflow:hidden">
+          <div style="display:grid;grid-template-columns:1.4fr 1fr .7fr;gap:10px;padding:9px 15px;font-size:11.5px;font-weight:700;letter-spacing:.04em;color:var(--pv-text-muted);border-bottom:1px solid var(--pv-border)"><span>PLAN</span><span>STATUS</span><span style="text-align:right">PRICE</span></div>
+          <div style="display:grid;grid-template-columns:1.4fr 1fr .7fr;gap:10px;padding:10px 15px;align-items:center;border-bottom:1px solid var(--pv-border)"><strong>Starter</strong><span style="color:var(--pv-text-muted);font-size:13px">Current plan</span><span style="text-align:right" class="mono">$0</span></div>
+          <div style="display:grid;grid-template-columns:1.4fr 1fr .7fr;gap:10px;padding:10px 15px;align-items:center"><strong>Growth</strong><span data-tok="accent onAccent" style="background:var(--pv-accent);color:var(--pv-on-accent);font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;justify-self:start">RECOMMENDED</span><span style="text-align:right" class="mono">$24</span></div>
+        </div>
+
+        <div data-tok="primary textInverse" style="margin:14px 18px 0;background:var(--pv-primary);color:var(--pv-text-inverse);border-radius:13px;padding:13px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <strong>Dark band on primary</strong>
+          <span style="opacity:.85;font-size:13px">Inverse text carries announcements on saturated fills.</span>
+          <span style="flex:1"></span>
+          <span data-tok="danger onDanger" style="background:var(--pv-danger);color:var(--pv-on-danger);padding:6px 13px;border-radius:8px;font-weight:600;font-size:13px">Delete workspace</span>
+        </div>
+      </div>`;
+    }
+
+    /* ================= state ================= */
+    let mode = "light";
+    let step = "seed";
+    let exportState = { format: "css", notation: "oklch", darkVia: "attr" };
+    let palettes = generatePalettes(18, 62, 180);
+    const $ = id => document.getElementById(id);
+    const seedEls = { hue: $("seedHue"), sat: $("seedSat"), harmony: $("seedHarmony") };
+
+    function toast(msg) {
+      const t = $("toast"); t.textContent = msg; t.classList.add("show");
+      clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 2200);
+    }
+
+    /* ================= stepper ================= */
+    function pairStats() {
+      const pal = palettes[mode]; let aa = 0, aaa = 0;
+      for (const p of PAIRS) {
+        const r = wcagRatio(oklchToRgb255(pal[p.fg]), oklchToRgb255(pal[p.bg]));
+        if (r >= p.min) aa++; if (r >= p.aaa) aaa++;
+      }
+      return { aa, aaa, fail: PAIRS.length - aa, total: PAIRS.length };
+    }
+    function groupFails(groupId) {
+      const pal = palettes[mode], keys = new Set(GROUPS[groupId].tokens); let n = 0;
+      for (const p of PAIRS) if ((keys.has(p.fg) || keys.has(p.bg)) && wcagRatio(oklchToRgb255(pal[p.fg]), oklchToRgb255(pal[p.bg])) < p.min) n++;
+      return n;
+    }
+    function renderStepper() {
+      const nav = $("stepper"); nav.innerHTML = "";
+      STEPS.forEach((s, i) => {
+        const b = document.createElement("button");
+        b.className = "step"; b.setAttribute("aria-current", step === s.id ? "step" : "false");
+        let flag = "";
+        if (s.id === "review") { const st = pairStats(); flag = st.fail ? `<span class="flag">${st.fail} failing</span>` : `<span class="flag ok">all pass</span>`; }
+        else if (GROUPS[s.id]) { const f = groupFails(s.id); if (f) flag = `<span class="flag">${f} issue${f > 1 ? "s" : ""}</span>`; }
+        b.innerHTML = `<span class="n">${i + 1}</span>${s.title} ${flag}`;
+        b.addEventListener("click", () => { step = s.id; renderEditor(); renderStepper(); });
+        nav.appendChild(b);
+      });
+    }
+
+    /* ================= token editor ================= */
+    function trackGradient(kind, col) {
+      const g = (l, c, h) => oklchCss({ l, c, h });
+      if (kind === "l") return `linear-gradient(90deg, ${g(0, col.c, col.h)}, ${g(0.5, col.c, col.h)}, ${g(1, col.c, col.h)})`;
+      if (kind === "c") return `linear-gradient(90deg, ${g(col.l, 0, col.h)}, ${g(col.l, 0.37, col.h)})`;
+      return "linear-gradient(90deg,oklch(.62 .17 0),oklch(.62 .17 60),oklch(.62 .17 120),oklch(.62 .17 180),oklch(.62 .17 240),oklch(.62 .17 300),oklch(.62 .17 360))";
+    }
+    function buildTokenRow(key) {
+      const def = TOKEN_DEFS[key];
+      const row = document.createElement("div");
+      row.className = "token"; row.dataset.key = key;
+      row.innerHTML = `
+        <div class="token-top">
+          <label class="swatch" title="Open system color picker"><span class="fill"></span><input type="color" aria-label="Pick ${def.name} color"></label>
+          <div class="token-names">
+            <div class="token-name">${def.name}</div>
+            <div class="token-var mono">--${kebab(key)}</div>
+            <div class="token-desc">${def.desc}</div>
+          </div>
+          <input class="hexin mono" spellcheck="false" aria-label="${def.name} hex value">
+        </div>
+        <div class="sliders">
+          ${["l", "c", "h"].map(ch => `
+          <div class="slider-row">
+            <span class="lab">${ch.toUpperCase()}</span>
+            <input type="range" class="tok" data-ch="${ch}" min="0" max="${ch === "l" ? 1000 : ch === "c" ? 370 : 360}" step="1" aria-label="${def.name} ${ch === "l" ? "lightness" : ch === "c" ? "chroma" : "hue"}">
+            <span class="val mono" data-val="${ch}"></span>
+          </div>`).join("")}
+          <div class="gamut-note">Outside the sRGB gamut — displayed and exported with chroma reduced to the closest displayable color.</div>
+        </div>`;
+      const col = () => palettes[mode][key];
+      row.querySelector('input[type="color"]').addEventListener("input", e => {
+        const rgb = hexToRgb255(e.target.value); if (!rgb) return;
+        palettes[mode][key] = rgb255ToOklch(rgb); syncRow(row, key); refreshDerived();
+      });
+      const hexIn = row.querySelector(".hexin");
+      hexIn.addEventListener("change", () => {
+        const rgb = hexToRgb255(hexIn.value);
+        if (!rgb) { hexIn.classList.add("invalid"); return; }
+        hexIn.classList.remove("invalid");
+        palettes[mode][key] = rgb255ToOklch(rgb); syncRow(row, key); refreshDerived();
+      });
+      hexIn.addEventListener("input", () => hexIn.classList.remove("invalid"));
+      row.querySelectorAll('input[type="range"]').forEach(sl => {
+        sl.addEventListener("input", () => {
+          const ch = sl.dataset.ch, v = parseFloat(sl.value);
+          if (ch === "l") col().l = v / 1000; else if (ch === "c") col().c = v / 1000; else col().h = v;
+          syncRow(row, key, ch); refreshDerived();
+        });
+      });
+      row.addEventListener("mouseenter", () => setHighlight(key, true));
+      row.addEventListener("mouseleave", () => setHighlight(key, false));
+      row.addEventListener("focusin", () => setHighlight(key, true));
+      row.addEventListener("focusout", () => setHighlight(key, false));
+      return row;
+    }
+    function syncRow(row, key) {
+      const col = palettes[mode][key];
+      row.querySelector(".fill").style.background = oklchCss(col);
+      row.querySelector('input[type="color"]').value = oklchToHex(displayCol(col));
+      const hexIn = row.querySelector(".hexin");
+      if (document.activeElement !== hexIn) hexIn.value = oklchToHex(displayCol(col));
+      row.querySelectorAll('input[type="range"]').forEach(sl => {
+        const ch = sl.dataset.ch;
+        sl.value = ch === "l" ? Math.round(col.l * 1000) : ch === "c" ? Math.round(col.c * 1000) : Math.round(col.h);
+        sl.style.background = trackGradient(ch, col);
+      });
+      row.querySelector('[data-val="l"]').textContent = col.l.toFixed(3);
+      row.querySelector('[data-val="c"]').textContent = col.c.toFixed(3);
+      row.querySelector('[data-val="h"]').textContent = Math.round(col.h) + "°";
+      row.querySelector(".gamut-note").classList.toggle("show", Math.abs(displayCol(col).c - col.c) > 0.01);
+    }
+    function renderEditor() {
+      const s = STEPS.find(x => x.id === step);
+      $("stepTitle").textContent = s.title;
+      $("stepGuidance").innerHTML = s.guidance;
+      $("seedPanel").hidden = step !== "seed";
+      $("reviewPanel").hidden = step !== "review";
+      const panel = $("tokenPanel");
+      panel.hidden = !(step in GROUPS);
+      panel.innerHTML = "";
+      if (step in GROUPS) for (const key of GROUPS[step].tokens) { const r = buildTokenRow(key); panel.appendChild(r); syncRow(r, key); }
+      if (step === "review") { const st = pairStats(); $("statAA").textContent = st.aa + "/" + st.total; $("statAAA").textContent = st.aaa + "/" + st.total; $("statFix").textContent = st.fail; }
+    }
+    function setHighlight(key, on) {
+      document.querySelectorAll("#preview [data-tok]").forEach(el => {
+        if (el.dataset.tok.split(" ").includes(key)) el.classList.toggle("is-hl", on);
+      });
+      document.querySelectorAll(".token").forEach(r => { if (r.dataset.key === key) r.classList.toggle("hl", on); });
+    }
+
+    /* ================= preview + audit ================= */
+    function applyPreview() {
+      const pal = palettes[mode];
+      for (const host of [$("previewFrame"), $("mobileBar")])
+        for (const k of ALL_KEYS) host.style.setProperty("--pv-" + kebab(k), oklchCss(pal[k]));
+      const label = (mode === "light" ? "Light" : "Dark") + " palette";
+      $("previewModeLabel").textContent = "· showing the " + label.toLowerCase();
+      $("auditModeLabel").textContent = "· " + label;
+      $("pvModePill").textContent = mode.toUpperCase() + " PALETTE";
+      $("miniMode").textContent = mode.toUpperCase() + " PALETTE";
+    }
+    function renderAudit() {
+      const pal = palettes[mode], table = $("auditTable"); table.innerHTML = "";
+      PAIRS.forEach((p, i) => {
+        const fgC = pal[p.fg], bgC = pal[p.bg];
+        const fgRgb = oklchToRgb255(fgC), bgRgb = oklchToRgb255(bgC);
+        const r = wcagRatio(fgRgb, bgRgb), lc = apcaLc(fgRgb, bgRgb);
+        const pass = r >= p.min, aaa = r >= p.aaa;
+        const row = document.createElement("div"); row.className = "audit-row";
+        row.innerHTML = `
+          <div class="pair-vis">
+            <span class="pair-chip" style="background:${oklchCss(bgC)};color:${oklchCss(fgC)}">Ag</span>
+            <span class="pair-names">${p.label}<small class="mono">--${kebab(p.fg)} on --${kebab(p.bg)} · needs ${p.min}:1${p.graphic ? " (UI)" : ""}</small></span>
+          </div>
+          <div class="ratio mono">${r.toFixed(2)}:1<small>APCA Lc ${Math.abs(lc).toFixed(0)}</small></div>
+          <span class="badge ${pass ? (aaa ? "pass" : "mid") : "fail"}">${pass ? (aaa ? "AAA" : "AA") : "Fail"}</span>
+          <span class="fixcell">${pass ? "" : `<button class="btn small" data-fix="${i}">Fix</button>`}</span>`;
+        table.appendChild(row);
+      });
+    }
+    function fixPair(i) { resolvePairIn(palettes[mode], PAIRS[i]); }
+    function fixAll() {
+      for (let pass = 0; pass < 4; pass++) {
+        let dirty = false;
+        PAIRS.forEach((p, i) => {
+          const pal = palettes[mode];
+          if (wcagRatio(oklchToRgb255(pal[p.fg]), oklchToRgb255(pal[p.bg])) < p.min) { fixPair(i); dirty = true; }
+        });
+        if (!dirty) break;
+      }
+      refreshDerived(); renderEditor(); renderStepper();
+      const st = pairStats();
+      toast(st.fail === 0 ? "All pairs now pass WCAG AA" : st.fail + " pair(s) still failing — the two colors may need a hue or chroma change, not just lightness");
+    }
+
+    /* ================= export ================= */
+    function tokenValue(col) {
+      return exportState.notation === "oklch" ? oklchCss(col) : oklchToHex(displayCol(col));
+    }
+    function buildExport() {
+      if (exportState.format === "json") {
+        const obj = { light: {}, dark: {} };
+        for (const m of ["light", "dark"]) for (const k of ALL_KEYS) obj[m][k] = { value: tokenValue(palettes[m][k]), oklch: { l: +palettes[m][k].l.toFixed(3), c: +palettes[m][k].c.toFixed(3), h: +palettes[m][k].h.toFixed(1) }, hex: oklchToHex(displayCol(palettes[m][k])) };
+        return JSON.stringify(obj, null, 2);
+      }
+      const lines = m => ALL_KEYS.map(k => "  --" + kebab(k) + ": " + tokenValue(palettes[m][k]) + ";").join("\n");
+      const head = "/* Color tokens — generated with Color Token Workshop */\n:root {\n" + lines("light") + "\n}\n";
+      if (exportState.darkVia === "media") return head + "\n@media (prefers-color-scheme: dark) {\n  :root {\n" + lines("dark").split("\n").map(l => "  " + l).join("\n") + "\n  }\n}\n";
+      return head + "\n[data-theme=\"dark\"] {\n" + lines("dark") + "\n}\n";
+    }
+    function renderExport() {
+      $("exportBox").textContent = buildExport();
+      $("exportMeta").textContent = ALL_KEYS.length * 2 + " tokens · light + dark";
+      $("notationSeg").style.display = exportState.format === "json" ? "none" : "";
+      $("darkSeg").style.display = exportState.format === "json" ? "none" : "";
+    }
+    function refreshDerived() { applyPreview(); renderAudit(); renderExport(); renderStepper(); }
+
+    /* ================= wiring ================= */
+    function setMode(m) {
+      mode = m;
+      $("modeLight").setAttribute("aria-pressed", m === "light");
+      $("modeDark").setAttribute("aria-pressed", m === "dark");
+      renderEditor(); refreshDerived(); renderStepper();
+    }
+    $("modeLight").addEventListener("click", () => setMode("light"));
+    $("modeDark").addEventListener("click", () => setMode("dark"));
+    $("miniMode").addEventListener("click", () => setMode(mode === "light" ? "dark" : "light"));
+    $("miniPreview").addEventListener("click", () => $("previewCard").scrollIntoView({ behavior: "smooth", block: "start" }));
+    $("exportJump").addEventListener("click", () => { step = "review"; renderEditor(); renderStepper(); $("exportCard").scrollIntoView({ behavior: "smooth", block: "start" }); });
+
+    function updateSeedLabels() {
+      $("seedHueVal").textContent = seedEls.hue.value + "°";
+      $("seedSatVal").textContent = seedEls.sat.value + "%";
+      seedEls.sat.style.background = `linear-gradient(90deg, oklch(.6 .01 ${seedEls.hue.value}), oklch(.58 .19 ${seedEls.hue.value}))`;
+    }
+    [seedEls.hue, seedEls.sat].forEach(el => el.addEventListener("input", updateSeedLabels));
+    $("generateBtn").addEventListener("click", () => {
+      palettes = generatePalettes(+seedEls.hue.value, +seedEls.sat.value, +seedEls.harmony.value);
+      renderEditor(); refreshDerived(); renderStepper();
+      toast("Palettes generated — every pair starts AA-clean");
+    });
+    $("deriveDarkBtn").addEventListener("click", () => {
+      const inv = {}; for (const k of ALL_KEYS) { const c = palettes.light[k]; inv[k] = { l: clamp(1.04 - c.l, 0.03, 0.97), c: c.c, h: c.h }; }
+      palettes.dark = inv;
+      if (mode === "dark") renderEditor();
+      refreshDerived(); renderStepper();
+      toast("Dark palette derived from light — check its audit before exporting");
+    });
+    $("diceBtn").addEventListener("click", () => {
+      seedEls.hue.value = Math.floor(Math.random() * 360);
+      seedEls.sat.value = 35 + Math.floor(Math.random() * 60);
+      seedEls.harmony.value = ["180", "150", "120", "32", "0"][Math.floor(Math.random() * 5)];
+      updateSeedLabels();
+      palettes = generatePalettes(+seedEls.hue.value, +seedEls.sat.value, +seedEls.harmony.value);
+      renderEditor(); refreshDerived(); renderStepper();
+      toast("Random seed applied");
+    });
+    PRESETS.forEach(p => {
+      const b = document.createElement("button"); b.className = "preset";
+      const dots = [0, 1, 2].map(i => {
+        const col = i === 1 ? { l: 0.56, c: 0.13, h: (p.hue + p.harmony) % 360 } : i === 2 ? { l: 0.52, c: 0.125, h: 152 } : { l: 0.545, c: 0.05 + (p.sat / 100) * 0.125, h: p.hue };
+        return `<i style="background:${oklchCss(col)}"></i>`;
+      }).join("");
+      b.innerHTML = `<span class="dots">${dots}</span>${p.name}`;
+      b.addEventListener("click", () => {
+        seedEls.hue.value = p.hue; seedEls.sat.value = p.sat; seedEls.harmony.value = String(p.harmony);
+        updateSeedLabels();
+        palettes = generatePalettes(p.hue, p.sat, p.harmony);
+        renderEditor(); refreshDerived(); renderStepper();
+        toast(p.name + " seed applied");
+      });
+      $("presetRow").appendChild(b);
+    });
+
+    $("auditTable").addEventListener("click", e => {
+      const btn = e.target.closest("[data-fix]"); if (!btn) return;
+      fixPair(+btn.dataset.fix);
+      document.querySelectorAll(".token").forEach(r => syncRow(r, r.dataset.key));
+      refreshDerived(); renderStepper();
+      if (step === "review") renderEditor();
+      toast("Fixed: " + PAIRS[+btn.dataset.fix].label);
+    });
+    $("fixAllBtn").addEventListener("click", fixAll);
+    $("fixAllBtn2").addEventListener("click", fixAll);
+
+    function segWire(btnId, fn) { $(btnId).addEventListener("click", () => { fn(); renderExport(); }); }
+    segWire("fmtCss", () => { exportState.format = "css"; $("fmtCss").setAttribute("aria-pressed", "true"); $("fmtJson").setAttribute("aria-pressed", "false"); });
+    segWire("fmtJson", () => { exportState.format = "json"; $("fmtJson").setAttribute("aria-pressed", "true"); $("fmtCss").setAttribute("aria-pressed", "false"); });
+    segWire("notOklch", () => { exportState.notation = "oklch"; $("notOklch").setAttribute("aria-pressed", "true"); $("notHex").setAttribute("aria-pressed", "false"); });
+    segWire("notHex", () => { exportState.notation = "hex"; $("notHex").setAttribute("aria-pressed", "true"); $("notOklch").setAttribute("aria-pressed", "false"); });
+    segWire("darkAttr", () => { exportState.darkVia = "attr"; $("darkAttr").setAttribute("aria-pressed", "true"); $("darkMedia").setAttribute("aria-pressed", "false"); });
+    segWire("darkMedia", () => { exportState.darkVia = "media"; $("darkMedia").setAttribute("aria-pressed", "true"); $("darkAttr").setAttribute("aria-pressed", "false"); });
+
+    $("copyBtn").addEventListener("click", async () => {
+      const text = buildExport();
+      try { await navigator.clipboard.writeText(text); toast("Copied " + (exportState.format === "json" ? "JSON tokens" : "CSS variables") + " to clipboard"); }
+      catch (e) {
+        const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); toast("Copied to clipboard"); } catch (err) { toast("Copy failed — select the code and copy manually"); }
+        ta.remove();
+      }
+    });
+    $("downloadBtn").addEventListener("click", () => {
+      const isJson = exportState.format === "json";
+      const blob = new Blob([buildExport()], { type: isJson ? "application/json" : "text/css" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = isJson ? "color-tokens.json" : "color-tokens.css";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      toast("Downloaded " + a.download);
+    });
+
+    /* ================= init ================= */
+    $("preview").innerHTML = buildPreview();
+    updateSeedLabels();
+    renderStepper();
+    renderEditor();
+    refreshDerived();
+    </script>
+</body>
+</html>
+  </body>
+</html>

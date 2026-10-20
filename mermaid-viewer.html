@@ -1,0 +1,1069 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Mermaid Viewer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #e9eaed;
+        --panel: #f7f7f9;
+        --panel2: #ffffff;
+        --ink: #1d2126;
+        --mut: #5b6068;
+        --faint: #878c95;
+        --line: #d6d7dc;
+        --line2: #bfc2ca;
+        --chip: #ececf0;
+        --acc: #2f6db3;
+        --acc-strong: #26598f;
+        --acc-ink: #ffffff;
+        --ok: #2e7d4f;
+        --err-bg: #fdeeee;
+        --err-line: #efc2c2;
+        --err-ink: #8f2d23;
+        --dot: #cfcfd6;
+        --shadow: 0 1px 2px rgba(24, 28, 38, .05), 0 10px 28px rgba(24, 28, 38, .07);
+        --radius: 14px;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          color-scheme: dark;
+          --bg: #121316;
+          --panel: #1a1b1f;
+          --panel2: #222329;
+          --ink: #eceef2;
+          --mut: #a2a6af;
+          --faint: #6f737e;
+          --line: #2d2f36;
+          --line2: #3d404a;
+          --chip: #26272e;
+          --acc: #7db0e6;
+          --acc-strong: #9cc3ee;
+          --acc-ink: #0d1724;
+          --ok: #6fce97;
+          --err-bg: #3a2120;
+          --err-line: #6e3a36;
+          --err-ink: #f0a9a0;
+          --dot: #2c2e35;
+          --shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 10px 28px rgba(0, 0, 0, .35);
+        }
+      }
+
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        font-family: "Outfit", system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+        font-size: 15px;
+        line-height: 1.45;
+        display: flex;
+        flex-direction: column;
+        height: 100dvh;
+        overflow: hidden;
+      }
+      button, select, textarea { font: inherit; color: inherit; }
+      button { cursor: pointer; }
+      :focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+
+      /* ---------- toolbar ---------- */
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        padding: 10px 12px;
+        background: var(--panel);
+        border-bottom: 1px solid var(--line);
+        z-index: 30;
+      }
+      .toolbar .spacer { flex: 1; }
+      .tb-label {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: .09em;
+        text-transform: uppercase;
+        color: var(--faint);
+        margin-right: -2px;
+      }
+      .select-wrap { position: relative; display: inline-flex; }
+      .select-wrap select {
+        appearance: none;
+        -webkit-appearance: none;
+        background: var(--panel2);
+        border: 1px solid var(--line2);
+        border-radius: 9px;
+        padding: 7px 28px 7px 11px;
+        font-size: 13.5px;
+        font-weight: 500;
+        max-width: 46vw;
+      }
+      .select-wrap::after {
+        content: "";
+        position: absolute;
+        right: 10px; top: 50%;
+        width: 7px; height: 7px;
+        border-right: 1.8px solid var(--mut);
+        border-bottom: 1.8px solid var(--mut);
+        transform: translateY(-70%) rotate(45deg);
+        pointer-events: none;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--panel2);
+        border: 1px solid var(--line2);
+        border-radius: 9px;
+        padding: 7px 12px;
+        font-size: 13.5px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .btn:hover { border-color: var(--faint); }
+      .btn:active { transform: translateY(1px); }
+      .btn svg { width: 15px; height: 15px; flex: none; }
+      .btn.primary { background: var(--acc); border-color: var(--acc); color: var(--acc-ink); }
+      .btn.primary:hover { background: var(--acc-strong); border-color: var(--acc-strong); }
+      .btn.icon-only { padding: 7px 9px; }
+      .docs-link {
+        font-size: 13.5px;
+        font-weight: 600;
+        color: var(--acc);
+        text-decoration: none;
+        padding: 7px 4px;
+        white-space: nowrap;
+      }
+      .docs-link:hover { text-decoration: underline; }
+
+      /* mobile pane tabs */
+      .tabs {
+        display: none;
+        background: var(--chip);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 3px;
+        gap: 2px;
+      }
+      .tabs button {
+        border: 0;
+        background: transparent;
+        border-radius: 999px;
+        padding: 5px 16px;
+        font-size: 13.5px;
+        font-weight: 600;
+        color: var(--mut);
+      }
+      .tabs button.on { background: var(--panel2); color: var(--ink); box-shadow: 0 1px 3px rgba(20, 24, 34, .14); }
+
+      /* export menu */
+      .menu-wrap { position: relative; }
+      .menu {
+        position: absolute;
+        right: 0; top: calc(100% + 6px);
+        min-width: 208px;
+        background: var(--panel2);
+        border: 1px solid var(--line2);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        padding: 5px;
+        display: none;
+        z-index: 60;
+      }
+      .menu.open { display: block; }
+      .menu button {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        gap: 9px;
+        background: transparent;
+        border: 0;
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 13.5px;
+        font-weight: 500;
+        text-align: left;
+      }
+      .menu button:hover { background: var(--chip); }
+      .menu button svg { width: 15px; height: 15px; color: var(--mut); flex: none; }
+      .menu .menu-note {
+        font-size: 11.5px;
+        color: var(--faint);
+        padding: 6px 10px 4px;
+        border-top: 1px solid var(--line);
+        margin-top: 4px;
+      }
+
+      /* ---------- layout ---------- */
+      main {
+        flex: 1;
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(330px, 5fr) 7fr;
+        gap: 12px;
+        padding: 12px;
+      }
+      .pane {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        min-width: 0;
+        overflow: hidden;
+      }
+      .pane-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--line);
+        min-height: 45px;
+        flex-wrap: wrap;
+      }
+      .pane-title {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: .09em;
+        text-transform: uppercase;
+        color: var(--faint);
+        margin-right: 2px;
+      }
+      .pane-head .spacer { flex: 1; }
+
+      /* ---------- editor ---------- */
+      .editor-wrap {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        background: var(--panel2);
+      }
+      .gutter {
+        flex: none;
+        width: 46px;
+        overflow: hidden;
+        background: var(--panel);
+        border-right: 1px solid var(--line);
+        position: relative;
+      }
+      .gutter-inner {
+        padding: 14px 10px 14px 0;
+        text-align: right;
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 13px;
+        line-height: 1.55;
+        color: var(--faint);
+        will-change: transform;
+      }
+      .gutter-inner span { display: block; }
+      #editor {
+        flex: 1;
+        min-width: 0;
+        border: 0;
+        resize: none;
+        background: transparent;
+        padding: 14px 14px 14px 12px;
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 13px;
+        line-height: 1.55;
+        white-space: pre;
+        overflow: auto;
+        tab-size: 2;
+        caret-color: var(--acc);
+      }
+      #editor:focus { outline: none; }
+
+      /* ---------- preview ---------- */
+      .zoom-group { display: inline-flex; align-items: center; gap: 2px; background: var(--chip); border: 1px solid var(--line); border-radius: 999px; padding: 2px; }
+      .zoom-group button {
+        border: 0; background: transparent; border-radius: 999px;
+        width: 30px; height: 26px;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-weight: 600; color: var(--ink);
+      }
+      .zoom-group button:hover { background: var(--panel2); }
+      .zoom-group button svg { width: 14px; height: 14px; }
+      .zoom-group .zoom-pct {
+        min-width: 48px; text-align: center;
+        font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--mut);
+      }
+      .pill-toggle {
+        border: 1px solid var(--line2);
+        background: var(--panel2);
+        border-radius: 999px;
+        padding: 5px 11px;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--mut);
+        display: inline-flex; align-items: center; gap: 6px;
+      }
+      .pill-toggle .dot-sw { width: 8px; height: 8px; border-radius: 50%; background: var(--line2); }
+      .pill-toggle.on { color: var(--ink); border-color: var(--acc); }
+      .pill-toggle.on .dot-sw { background: var(--acc); }
+      .small-btn {
+        border: 1px solid var(--line2); background: var(--panel2);
+        border-radius: 9px; padding: 5px 9px;
+        display: inline-flex; align-items: center; gap: 5px;
+        font-size: 12.5px; font-weight: 600;
+      }
+      .small-btn svg { width: 14px; height: 14px; }
+
+      .error-bar {
+        display: none;
+        margin: 10px 12px 0;
+        background: var(--err-bg);
+        border: 1px solid var(--err-line);
+        color: var(--err-ink);
+        border-radius: 10px;
+        padding: 9px 12px;
+        font-size: 13px;
+      }
+      .error-bar.show { display: block; }
+      .error-bar .err-title { font-weight: 700; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 2px; }
+      .error-bar pre {
+        margin: 0;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 12px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 110px;
+        overflow: auto;
+      }
+
+      .stage {
+        flex: 1;
+        min-height: 0;
+        position: relative;
+        overflow: hidden;
+        margin: 12px;
+        margin-top: 10px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background-color: var(--panel2);
+        background-image: radial-gradient(circle, var(--dot) 1px, transparent 1.1px);
+        background-size: 22px 22px;
+        touch-action: none;
+        cursor: grab;
+      }
+      .stage:active { cursor: grabbing; }
+      .stage:fullscreen { margin: 0; border: 0; border-radius: 0; }
+      .canvas {
+        position: absolute;
+        left: 0; top: 0;
+        transform-origin: 0 0;
+        will-change: transform;
+      }
+      .canvas svg { display: block; }
+      .stage-empty {
+        position: absolute; inset: 0;
+        display: none;
+        align-items: center; justify-content: center;
+        text-align: center;
+        color: var(--faint);
+        font-size: 14px;
+        padding: 24px;
+        pointer-events: none;
+      }
+      .stage-empty.show { display: flex; }
+
+      /* ---------- status bar ---------- */
+      .statusbar {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 6px 14px;
+        background: var(--panel);
+        border-top: 1px solid var(--line);
+        font-size: 12.5px;
+        color: var(--mut);
+        flex-wrap: wrap;
+      }
+      .status-item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+      .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); flex: none; }
+      .status-dot.ok { background: var(--ok); }
+      .status-dot.err { background: #d64541; }
+      .statusbar .spacer { flex: 1; }
+      .statusbar .mono { font-family: "JetBrains Mono", monospace; font-size: 12px; }
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: calc(18px + env(safe-area-inset-bottom));
+        transform: translate(-50%, 16px);
+        background: var(--ink);
+        color: var(--bg);
+        font-size: 13.5px;
+        font-weight: 600;
+        padding: 9px 16px;
+        border-radius: 999px;
+        box-shadow: var(--shadow);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity .18s ease, transform .18s ease;
+        z-index: 100;
+      }
+      .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+      /* ---------- responsive ---------- */
+      @media (max-width: 900px) {
+        main { grid-template-columns: 1fr; padding: 10px; gap: 10px; }
+        .tabs { display: inline-flex; }
+        .pane { display: none; }
+        .pane.active { display: flex; }
+        .tb-label { display: none; }
+        .btn .btn-text { display: none; }
+        .btn { padding: 7px 9px; }
+        .docs-link { display: none; }
+        .toolbar { gap: 6px; padding: 8px 10px; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .toast { transition: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="toolbar">
+      <span class="tb-label" id="ex-label">Example</span>
+      <span class="select-wrap">
+        <select id="example-select" aria-labelledby="ex-label"></select>
+      </span>
+      <span class="tb-label" id="th-label">Theme</span>
+      <span class="select-wrap">
+        <select id="theme-select" aria-labelledby="th-label">
+          <option value="default">Default</option>
+          <option value="neutral">Neutral</option>
+          <option value="dark">Dark</option>
+          <option value="forest">Forest</option>
+          <option value="base">Base</option>
+        </select>
+      </span>
+
+      <div class="tabs" role="tablist" aria-label="Pane">
+        <button id="tab-code" class="on" role="tab" aria-selected="true">Code</button>
+        <button id="tab-preview" role="tab" aria-selected="false">Preview</button>
+      </div>
+
+      <span class="spacer"></span>
+
+      <button class="btn" id="copy-code-btn" type="button" title="Copy diagram code">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <span class="btn-text">Copy code</span>
+      </button>
+
+      <div class="menu-wrap">
+        <button class="btn primary" id="export-btn" type="button" aria-haspopup="true" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span class="btn-text">Export</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="width:12px;height:12px"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="menu" id="export-menu" role="menu">
+          <button type="button" id="dl-svg" role="menuitem">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download SVG
+          </button>
+          <button type="button" id="dl-png" role="menuitem">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
+            Download PNG
+          </button>
+          <button type="button" id="dl-mmd" role="menuitem">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            Download .mmd source
+          </button>
+          <button type="button" id="copy-svg" role="menuitem">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy SVG markup
+          </button>
+          <div class="menu-note">PNG exports at 3× resolution.</div>
+        </div>
+      </div>
+
+      <a class="docs-link" href="https://mermaid.js.org/intro/" target="_blank" rel="noopener">Syntax docs &#8599;</a>
+    </div>
+
+    <main>
+      <section class="pane active" id="pane-code" aria-label="Diagram code editor">
+        <div class="pane-head">
+          <span class="pane-title">Code</span>
+          <span class="spacer"></span>
+          <button class="small-btn" id="clear-btn" type="button">Clear</button>
+          <button class="small-btn" id="render-btn" type="button" title="Render now (Ctrl/⌘ + Enter)">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+            Render
+          </button>
+        </div>
+        <div class="editor-wrap">
+          <div class="gutter" aria-hidden="true"><div class="gutter-inner" id="gutter-inner"></div></div>
+          <textarea id="editor" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Mermaid diagram code" placeholder="Type Mermaid code here — e.g. flowchart TD"></textarea>
+        </div>
+      </section>
+
+      <section class="pane" id="pane-preview" aria-label="Rendered diagram preview">
+        <div class="pane-head">
+          <span class="pane-title">Preview</span>
+          <div class="zoom-group" role="group" aria-label="Zoom">
+            <button type="button" id="zoom-out" aria-label="Zoom out">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <span class="zoom-pct" id="zoom-pct">100%</span>
+            <button type="button" id="zoom-in" aria-label="Zoom in">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>
+          <button class="small-btn" id="zoom-fit" type="button">Fit</button>
+          <span class="spacer"></span>
+          <button class="pill-toggle on" id="autofit-toggle" type="button" aria-pressed="true"><span class="dot-sw"></span>Auto-fit</button>
+          <button class="small-btn" id="fs-btn" type="button" aria-label="Fullscreen preview">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+            <span class="btn-text">Fullscreen</span>
+          </button>
+        </div>
+        <div class="error-bar" id="error-bar">
+          <div class="err-title">Syntax error</div>
+          <pre id="error-text"></pre>
+        </div>
+        <div class="stage" id="stage">
+          <div class="canvas" id="canvas"></div>
+          <div class="stage-empty" id="stage-empty">Your diagram will appear here.<br />Write some Mermaid code, or pick an example above.</div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="statusbar">
+      <span class="status-item"><span class="status-dot" id="status-dot"></span><span id="status-text">Loading Mermaid…</span></span>
+      <span class="spacer"></span>
+      <span class="status-item mono" id="doc-stats">0 lines · 0 chars</span>
+      <span class="status-item mono" id="version-label">Mermaid —</span>
+    </footer>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@12.2.0/dist/mermaid.min.js"></script>
+    <script>
+      "use strict";
+
+      var PINNED_VERSION = "12.2.0";
+
+      var SAMPLES = [
+        { name: "Flowchart", code:
+"flowchart TD\n" +
+"    A[Start] --> B{Is it working?}\n" +
+"    B -->|Yes| C[Ship it]\n" +
+"    B -->|No| D[Debug it]\n" +
+"    D --> B\n" +
+"    C --> E([Done])" },
+        { name: "Sequence diagram", code:
+"sequenceDiagram\n" +
+"    autonumber\n" +
+"    actor User\n" +
+"    participant App\n" +
+"    participant API\n" +
+"    User->>App: Open dashboard\n" +
+"    App->>API: GET /metrics\n" +
+"    API-->>App: 200 OK\n" +
+"    App-->>User: Render charts" },
+        { name: "Class diagram", code:
+"classDiagram\n" +
+"    class Animal {\n" +
+"        +String name\n" +
+"        +int age\n" +
+"        +makeSound()\n" +
+"    }\n" +
+"    class Dog {\n" +
+"        +String breed\n" +
+"        +fetch()\n" +
+"    }\n" +
+"    Animal <|-- Dog" },
+        { name: "State diagram", code:
+"stateDiagram-v2\n" +
+"    [*] --> Idle\n" +
+"    Idle --> Loading: fetch\n" +
+"    Loading --> Success: 200 OK\n" +
+"    Loading --> Error: timeout\n" +
+"    Error --> Loading: retry\n" +
+"    Success --> [*]" },
+        { name: "ER diagram", code:
+"erDiagram\n" +
+"    CUSTOMER ||--o{ ORDER : places\n" +
+"    ORDER ||--|{ LINE_ITEM : contains\n" +
+"    CUSTOMER {\n" +
+"        string name\n" +
+"        string email\n" +
+"    }\n" +
+"    ORDER {\n" +
+"        int id\n" +
+"        date placed\n" +
+"    }" },
+        { name: "Gantt chart", code:
+"gantt\n" +
+"    title Product Launch\n" +
+"    dateFormat YYYY-MM-DD\n" +
+"    section Build\n" +
+"    Design       :a1, 2026-10-01, 10d\n" +
+"    Development  :after a1, 20d\n" +
+"    section Release\n" +
+"    Testing      :2026-11-01, 12d\n" +
+"    Launch       :milestone, 2026-11-15, 0d" },
+        { name: "Pie chart", code:
+"pie title Time spent this week\n" +
+"    \"Teaching\" : 35\n" +
+"    \"Coursework\" : 25\n" +
+"    \"Coding\" : 25\n" +
+"    \"Everything else\" : 15" },
+        { name: "Git graph", code:
+"gitGraph\n" +
+"    commit\n" +
+"    commit\n" +
+"    branch develop\n" +
+"    checkout develop\n" +
+"    commit\n" +
+"    commit\n" +
+"    checkout main\n" +
+"    merge develop\n" +
+"    commit" },
+        { name: "User journey", code:
+"journey\n" +
+"    title My working day\n" +
+"    section Morning\n" +
+"      Coffee: 5: Me\n" +
+"      Commute: 3: Me\n" +
+"    section Work\n" +
+"      Teach class: 5: Me, Students\n" +
+"      Grade papers: 2: Me" },
+        { name: "Mindmap", code:
+"mindmap\n" +
+"  root((Mermaid))\n" +
+"    Diagrams\n" +
+"      Flowchart\n" +
+"      Sequence\n" +
+"      Gantt\n" +
+"    Features\n" +
+"      Themes\n" +
+"      PNG export" },
+        { name: "Timeline", code:
+"timeline\n" +
+"    title Mermaid releases\n" +
+"    2019 : First public release\n" +
+"    2023 : Version 10\n" +
+"    2024 : Version 11\n" +
+"    2026 : Version 12" },
+        { name: "Quadrant chart", code:
+"quadrantChart\n" +
+"    title Effort vs. impact\n" +
+"    x-axis Low effort --> High effort\n" +
+"    y-axis Low impact --> High impact\n" +
+"    quadrant-1 Do later\n" +
+"    quadrant-2 Plan carefully\n" +
+"    quadrant-3 Skip it\n" +
+"    quadrant-4 Do first\n" +
+"    Quick fix: [0.2, 0.82]\n" +
+"    Big rewrite: [0.85, 0.9]\n" +
+"    Busywork: [0.72, 0.14]" },
+        { name: "XY chart", code:
+"xychart-beta\n" +
+"    title \"Weekly study hours\"\n" +
+"    x-axis [Mon, Tue, Wed, Thu, Fri, Sat, Sun]\n" +
+"    y-axis \"Hours\" 0 --> 8\n" +
+"    bar [2, 3, 5, 4, 6, 7, 3]\n" +
+"    line [2, 3, 5, 4, 6, 7, 3]" }
+      ];
+
+      function $(id) { return document.getElementById(id); }
+      var editor = $("editor"), gutterInner = $("gutter-inner");
+      var stage = $("stage"), canvas = $("canvas"), stageEmpty = $("stage-empty");
+      var errorBar = $("error-bar"), errorText = $("error-text");
+      var statusDot = $("status-dot"), statusText = $("status-text");
+      var docStats = $("doc-stats"), zoomPct = $("zoom-pct");
+      var paneCode = $("pane-code"), panePreview = $("pane-preview");
+      var tabCode = $("tab-code"), tabPreview = $("tab-preview");
+      var exportMenu = $("export-menu"), exportBtn = $("export-btn");
+      var toastEl = $("toast");
+
+      var state = {
+        theme: "default",
+        scale: 1, tx: 0, ty: 0,
+        natW: 0, natH: 0,
+        autoFit: true,
+        lastSvg: "",
+        renderSeq: 0,
+        debounce: null
+      };
+
+      var toastTimer = null;
+      function toast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add("show");
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, 2200);
+      }
+
+      function setStatus(mode, text) {
+        statusDot.className = "status-dot" + (mode ? " " + mode : "");
+        statusText.textContent = text;
+      }
+
+      /* ---------------- mermaid ---------------- */
+      var mermaidReady = typeof window.mermaid !== "undefined";
+      function initMermaid() {
+        window.mermaid.initialize({
+          startOnLoad: false,
+          theme: state.theme,
+          securityLevel: "loose",
+          suppressErrorRendering: true,
+          fontFamily: "'Outfit', 'Segoe UI', sans-serif"
+        });
+      }
+
+      function render() {
+        if (!mermaidReady) {
+          setStatus("err", "Mermaid failed to load — check your connection and reload.");
+          return;
+        }
+        var code = editor.value;
+        if (!code.trim()) {
+          canvas.innerHTML = "";
+          state.lastSvg = ""; state.natW = 0; state.natH = 0;
+          stageEmpty.classList.add("show");
+          errorBar.classList.remove("show");
+          setStatus("", "Empty — write some Mermaid code");
+          return;
+        }
+        var seq = ++state.renderSeq;
+        window.mermaid.render("mmd-graph-" + seq, code).then(function (res) {
+          if (seq !== state.renderSeq) return;
+          canvas.innerHTML = res.svg;
+          if (typeof res.bindFunctions === "function") res.bindFunctions(canvas);
+          state.lastSvg = res.svg;
+          var svg = canvas.querySelector("svg");
+          if (svg) {
+            var vb = (svg.getAttribute("viewBox") || "").split(/\s+/).map(Number);
+            state.natW = vb[2] || svg.getBoundingClientRect().width;
+            state.natH = vb[3] || svg.getBoundingClientRect().height;
+            svg.setAttribute("width", state.natW);
+            svg.setAttribute("height", state.natH);
+            svg.style.width = state.natW + "px";
+            svg.style.height = state.natH + "px";
+            svg.style.maxWidth = "none";
+          }
+          stageEmpty.classList.remove("show");
+          errorBar.classList.remove("show");
+          setStatus("ok", "Rendered");
+          if (state.autoFit) fit();
+          else applyTransform();
+        }).catch(function (err) {
+          if (seq !== state.renderSeq) return;
+          var msg = (err && err.message) ? err.message : String(err);
+          errorText.textContent = msg.length > 900 ? msg.slice(0, 900) + "…" : msg;
+          errorBar.classList.add("show");
+          setStatus("err", "Syntax error — last good diagram kept");
+        });
+      }
+
+      function scheduleRender() {
+        setStatus("", "Editing…");
+        if (state.debounce) clearTimeout(state.debounce);
+        state.debounce = setTimeout(render, 350);
+      }
+
+      /* ---------------- pan & zoom ---------------- */
+      function clampScale(s) { return Math.min(8, Math.max(0.05, s)); }
+      function applyTransform() {
+        canvas.style.transform = "translate(" + state.tx + "px," + state.ty + "px) scale(" + state.scale + ")";
+        zoomPct.textContent = Math.round(state.scale * 100) + "%";
+      }
+      function fit() {
+        if (!state.natW || !state.natH) return;
+        var r = stage.getBoundingClientRect();
+        if (r.width < 10 || r.height < 10) return;
+        var s = Math.min((r.width - 32) / state.natW, (r.height - 32) / state.natH);
+        state.scale = clampScale(s);
+        state.tx = (r.width - state.natW * state.scale) / 2;
+        state.ty = (r.height - state.natH * state.scale) / 2;
+        applyTransform();
+      }
+      function zoomAt(mx, my, factor) {
+        var s0 = state.scale;
+        var s1 = clampScale(s0 * factor);
+        if (s1 === s0) return;
+        var px = (mx - state.tx) / s0, py = (my - state.ty) / s0;
+        state.scale = s1;
+        state.tx = mx - px * s1;
+        state.ty = my - py * s1;
+        applyTransform();
+      }
+      function zoomCenter(factor) {
+        var r = stage.getBoundingClientRect();
+        zoomAt(r.width / 2, r.height / 2, factor);
+      }
+
+      var pointers = new Map();
+      var pinch = null;
+      stage.addEventListener("pointerdown", function (e) {
+        stage.setPointerCapture(e.pointerId);
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (pointers.size === 2) {
+          var pts = Array.from(pointers.values());
+          var r = stage.getBoundingClientRect();
+          var mx = (pts[0].x + pts[1].x) / 2 - r.left, my = (pts[0].y + pts[1].y) / 2 - r.top;
+          pinch = {
+            d: Math.max(10, Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)),
+            s: state.scale,
+            px: (mx - state.tx) / state.scale,
+            py: (my - state.ty) / state.scale
+          };
+        }
+      });
+      stage.addEventListener("pointermove", function (e) {
+        if (!pointers.has(e.pointerId)) return;
+        var prev = pointers.get(e.pointerId);
+        var dx = e.clientX - prev.x, dy = e.clientY - prev.y;
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (pointers.size === 1) {
+          state.tx += dx; state.ty += dy;
+          applyTransform();
+        } else if (pointers.size === 2 && pinch) {
+          var pts = Array.from(pointers.values());
+          var r = stage.getBoundingClientRect();
+          var mx = (pts[0].x + pts[1].x) / 2 - r.left, my = (pts[0].y + pts[1].y) / 2 - r.top;
+          var d = Math.max(10, Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y));
+          state.scale = clampScale(pinch.s * d / pinch.d);
+          state.tx = mx - pinch.px * state.scale;
+          state.ty = my - pinch.py * state.scale;
+          applyTransform();
+        }
+      });
+      function endPointer(e) {
+        pointers.delete(e.pointerId);
+        if (pointers.size < 2) pinch = null;
+      }
+      stage.addEventListener("pointerup", endPointer);
+      stage.addEventListener("pointercancel", endPointer);
+      stage.addEventListener("wheel", function (e) {
+        e.preventDefault();
+        var r = stage.getBoundingClientRect();
+        zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0016));
+      }, { passive: false });
+      stage.addEventListener("dblclick", function () { fit(); });
+
+      $("zoom-in").addEventListener("click", function () { zoomCenter(1.25); });
+      $("zoom-out").addEventListener("click", function () { zoomCenter(0.8); });
+      $("zoom-fit").addEventListener("click", fit);
+      var autofitToggle = $("autofit-toggle");
+      autofitToggle.addEventListener("click", function () {
+        state.autoFit = !state.autoFit;
+        autofitToggle.classList.toggle("on", state.autoFit);
+        autofitToggle.setAttribute("aria-pressed", String(state.autoFit));
+        if (state.autoFit) fit();
+      });
+      $("fs-btn").addEventListener("click", function () {
+        if (document.fullscreenElement) { document.exitFullscreen(); return; }
+        if (stage.requestFullscreen) {
+          stage.requestFullscreen().catch(function () { toast("Fullscreen isn't available here"); });
+        } else { toast("Fullscreen isn't available here"); }
+      });
+      document.addEventListener("fullscreenchange", function () {
+        setTimeout(function () { if (state.autoFit) fit(); }, 60);
+      });
+      var resizeTimer = null;
+      window.addEventListener("resize", function () {
+        if (resizeTimer) clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () { if (state.autoFit) fit(); }, 150);
+      });
+
+      /* ---------------- editor ---------------- */
+      function updateMeta() {
+        var v = editor.value;
+        var lines = v ? v.split("\n").length : 0;
+        docStats.textContent = lines + (lines === 1 ? " line" : " lines") + " · " + v.length + " chars";
+        var html = "";
+        for (var i = 1; i <= Math.max(lines, 1); i++) html += "<span>" + i + "</span>";
+        gutterInner.innerHTML = html;
+        gutterInner.style.transform = "translateY(" + (-editor.scrollTop) + "px)";
+      }
+      editor.addEventListener("scroll", function () {
+        gutterInner.style.transform = "translateY(" + (-editor.scrollTop) + "px)";
+      });
+      editor.addEventListener("input", function () { updateMeta(); scheduleRender(); });
+      editor.addEventListener("keydown", function (e) {
+        if (e.key === "Tab") {
+          e.preventDefault();
+          var s = editor.selectionStart, en = editor.selectionEnd;
+          editor.setRangeText("  ", s, en, "end");
+          updateMeta(); scheduleRender();
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+          e.preventDefault();
+          render();
+          if (window.matchMedia("(max-width: 900px)").matches) showPane("preview");
+        }
+      });
+      $("render-btn").addEventListener("click", function () {
+        render();
+        if (window.matchMedia("(max-width: 900px)").matches) showPane("preview");
+      });
+      $("clear-btn").addEventListener("click", function () {
+        editor.value = "";
+        updateMeta(); render();
+        editor.focus();
+      });
+
+      /* ---------------- mobile tabs ---------------- */
+      function showPane(which) {
+        var code = which === "code";
+        paneCode.classList.toggle("active", code);
+        panePreview.classList.toggle("active", !code);
+        tabCode.classList.toggle("on", code);
+        tabPreview.classList.toggle("on", !code);
+        tabCode.setAttribute("aria-selected", String(code));
+        tabPreview.setAttribute("aria-selected", String(!code));
+        if (!code) requestAnimationFrame(function () { if (state.autoFit) fit(); else applyTransform(); });
+      }
+      tabCode.addEventListener("click", function () { showPane("code"); });
+      tabPreview.addEventListener("click", function () { showPane("preview"); });
+
+      /* ---------------- toolbar ---------------- */
+      var exampleSelect = $("example-select");
+      SAMPLES.forEach(function (s, i) {
+        var opt = document.createElement("option");
+        opt.value = String(i); opt.textContent = s.name;
+        exampleSelect.appendChild(opt);
+      });
+      exampleSelect.addEventListener("change", function () {
+        var s = SAMPLES[Number(exampleSelect.value)];
+        if (!s) return;
+        editor.value = s.code;
+        updateMeta(); render();
+        if (window.matchMedia("(max-width: 900px)").matches) showPane("preview");
+      });
+      $("theme-select").addEventListener("change", function (e) {
+        state.theme = e.target.value;
+        initMermaid();
+        render();
+      });
+
+      /* ---------------- copy & export ---------------- */
+      function copyText(text, msg) {
+        function fallback() {
+          var ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed"; ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          try { document.execCommand("copy"); toast(msg); }
+          catch (e) { toast("Copy failed — select and copy manually"); }
+          document.body.removeChild(ta);
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () { toast(msg); }, fallback);
+        } else fallback();
+      }
+      function download(name, blob) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url; a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      }
+      function sizedSvgString() {
+        if (!state.lastSvg) return "";
+        var doc = new DOMParser().parseFromString(state.lastSvg, "image/svg+xml");
+        var svg = doc.querySelector("svg");
+        if (!svg) return state.lastSvg;
+        svg.setAttribute("width", state.natW);
+        svg.setAttribute("height", state.natH);
+        svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+        return new XMLSerializer().serializeToString(svg);
+      }
+      function needDiagram() {
+        if (!state.lastSvg) { toast("Nothing rendered yet — fix the code first"); return false; }
+        return true;
+      }
+
+      $("copy-code-btn").addEventListener("click", function () {
+        if (!editor.value) { toast("Editor is empty"); return; }
+        copyText(editor.value, "Code copied");
+      });
+      exportBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var open = exportMenu.classList.toggle("open");
+        exportBtn.setAttribute("aria-expanded", String(open));
+      });
+      document.addEventListener("click", function (e) {
+        if (!exportMenu.contains(e.target)) {
+          exportMenu.classList.remove("open");
+          exportBtn.setAttribute("aria-expanded", "false");
+        }
+      });
+      function closeMenu() { exportMenu.classList.remove("open"); exportBtn.setAttribute("aria-expanded", "false"); }
+
+      $("dl-svg").addEventListener("click", function () {
+        closeMenu();
+        if (!needDiagram()) return;
+        download("diagram.svg", new Blob([sizedSvgString()], { type: "image/svg+xml;charset=utf-8" }));
+        toast("SVG downloaded");
+      });
+      $("dl-mmd").addEventListener("click", function () {
+        closeMenu();
+        if (!editor.value) { toast("Editor is empty"); return; }
+        download("diagram.mmd", new Blob([editor.value], { type: "text/plain;charset=utf-8" }));
+        toast("Source downloaded");
+      });
+      $("copy-svg").addEventListener("click", function () {
+        closeMenu();
+        if (!needDiagram()) return;
+        copyText(sizedSvgString(), "SVG markup copied");
+      });
+      $("dl-png").addEventListener("click", function () {
+        closeMenu();
+        if (!needDiagram()) return;
+        var xml = sizedSvgString();
+        var url = URL.createObjectURL(new Blob([xml], { type: "image/svg+xml;charset=utf-8" }));
+        var img = new Image();
+        img.onload = function () {
+          var factor = 3;
+          var c = document.createElement("canvas");
+          c.width = Math.max(1, Math.round(state.natW * factor));
+          c.height = Math.max(1, Math.round(state.natH * factor));
+          var ctx = c.getContext("2d");
+          ctx.fillStyle = getComputedStyle(stage).backgroundColor;
+          ctx.fillRect(0, 0, c.width, c.height);
+          ctx.drawImage(img, 0, 0, c.width, c.height);
+          URL.revokeObjectURL(url);
+          if (c.toBlob) {
+            c.toBlob(function (blob) {
+              if (blob) { download("diagram.png", blob); toast("PNG downloaded"); }
+              else toast("PNG export failed");
+            }, "image/png");
+          } else toast("PNG export isn't supported here");
+        };
+        img.onerror = function () { URL.revokeObjectURL(url); toast("PNG export failed"); };
+        img.src = url;
+      });
+
+      /* ---------------- boot ---------------- */
+      editor.value = SAMPLES[0].code;
+      updateMeta();
+      if (mermaidReady) {
+        initMermaid();
+        var v = (window.mermaid && window.mermaid.version) ? window.mermaid.version : PINNED_VERSION;
+        $("version-label").textContent = "Mermaid " + v;
+        render();
+        requestAnimationFrame(fit);
+      } else {
+        $("version-label").textContent = "Mermaid " + PINNED_VERSION;
+        setStatus("err", "Mermaid failed to load — check your connection and reload.");
+        stageEmpty.classList.add("show");
+      }
+    </script>
+  </body>
+</html>
