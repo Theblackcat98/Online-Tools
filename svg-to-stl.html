@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="Extrude an SVG into a printable 3D STL file, entirely in your browser.">
+<title>SVG to STL — Online Tools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light;--bg:#e9eaed;--panel:#f7f7f9;--panel2:#fff;--ink:#1d2126;--mut:#5b6068;--faint:#878c95;--line:#d6d7dc;--line2:#bfc2ca;--chip:#ececf0;--acc:#2f6db3;--acc-strong:#26598f;--acc-ink:#fff;--ok:#2e7d4f;--err-bg:#fdeeee;--err-line:#efc2c2;--err-ink:#8f2d23;--shadow:0 1px 2px rgba(24,28,38,.06),0 8px 28px rgba(24,28,38,.06);--radius:14px}
+@media (prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#121316;--panel:#1a1b1f;--panel2:#222329;--ink:#eceef2;--mut:#a2a6af;--faint:#6f737e;--line:#2d2f36;--line2:#3d404a;--chip:#26272e;--acc:#7db0e6;--acc-strong:#9cc3ee;--acc-ink:#0d1724;--ok:#6fce97;--err-bg:#3a2120;--err-line:#6e3a36;--err-ink:#f0a9a0;--shadow:0 1px 2px rgba(0,0,0,.35),0 8px 28px rgba(0,0,0,.35)}}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Outfit",system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+code,.mono,textarea{font-family:"JetBrains Mono",monospace}
+a{color:var(--acc)}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line)}
+.topbar .brand{font-weight:700;letter-spacing:-.01em;color:var(--ink);text-decoration:none}
+.topbar .spacer{flex:1}
+.pill{font-size:12px;font-weight:600;color:var(--mut);background:var(--chip);border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+main{max-width:980px;margin:0 auto;padding:22px 14px 40px}
+h1{font-size:26px;letter-spacing:-.02em;margin:0 0 6px}
+.sub{color:var(--mut);margin:0 0 18px;max-width:66ch}
+.card{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
+.label{font-size:11.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin:0 0 8px}
+.drop{border:2px dashed var(--line2);border-radius:var(--radius);background:var(--panel);padding:24px 16px;text-align:center;cursor:pointer}
+.drop:hover,.drop.over{border-color:var(--acc);background:var(--chip)}
+.drop strong{display:block;font-size:17px;margin-bottom:4px}
+.drop span{color:var(--mut);font-size:13.5px}
+textarea{width:100%;min-height:100px;border:1px solid var(--line2);border-radius:10px;background:var(--panel);color:var(--ink);font-size:12.5px;padding:10px;resize:vertical}
+.row{display:flex;gap:14px;flex-wrap:wrap}
+.col{flex:1 1 300px;min-width:0}
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line2);background:var(--panel2);color:var(--ink);font:inherit;font-size:13.5px;font-weight:600;border-radius:9px;padding:8px 16px;cursor:pointer;box-shadow:var(--shadow)}
+.btn:hover{background:var(--chip)}
+.btn.primary{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.btn.primary:hover{background:var(--acc-strong)}
+.btn[disabled]{opacity:.5;pointer-events:none}
+.checker{background:repeating-conic-gradient(#c9ccd4 0% 25%, #eef0f3 0% 50%) 0 0/16px 16px;border:1px solid var(--line);border-radius:10px}
+@media (prefers-color-scheme:dark){.checker{background:repeating-conic-gradient(#2a2c33 0% 25%, #1d1e23 0% 50%) 0 0/16px 16px}}
+.stage{min-height:200px;display:flex;align-items:center;justify-content:center;padding:10px;overflow:hidden}
+.stage svg{max-width:100%;max-height:320px;height:auto}
+#gl{width:100%;height:320px;display:block;border-radius:10px;background:var(--panel)}
+.err{display:none;background:var(--err-bg);border:1px solid var(--err-line);color:var(--err-ink);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:14px}
+.warn{display:none;background:#fdf6e0;border:1px solid #eadfae;color:#6b5d1e;border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:14px}
+@media (prefers-color-scheme:dark){.warn{background:#33301d;border-color:#5c552e;color:#e5d98a}}
+.note{color:var(--mut);font-size:13.5px}
+.stats{font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--mut)}
+footer{color:var(--faint);font-size:13px;text-align:center;padding:18px}
+input[type=file]{display:none}
+input[type=number]{width:90px;padding:7px 9px;border:1px solid var(--line2);border-radius:9px;background:var(--panel2);color:var(--ink);font:inherit}
+.ctl{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.ctl .lab{width:150px;font-weight:600;font-size:13.5px}
+.check{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:13.5px;cursor:pointer}
+.check input{accent-color:var(--acc)}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="./">← Online Tools</a>
+  <span class="pill">SVG → STL</span>
+  <div class="spacer"></div>
+  <span class="pill">Runs 100% locally · nothing uploads</span>
+</header>
+<main>
+  <h1>SVG to STL</h1>
+  <p class="sub">Extrude the filled shapes of an SVG into a watertight, print-ready <code>.stl</code> — pick a real-world width and a thickness, preview it in 3D, and send it straight to your slicer. Logos, signs, name plates, cookie-cutter outlines: if it's a filled path, it extrudes.</p>
+
+  <div class="err" id="err"></div>
+  <div class="warn" id="warn"></div>
+
+  <div class="card">
+    <p class="label">1 · Source SVG</p>
+    <div class="drop" id="drop" role="button" tabindex="0" aria-label="Choose an SVG file">
+      <strong>Drop an .svg here</strong>
+      <span>or click to browse</span>
+    </div>
+    <input type="file" id="file">
+    <p class="label" style="margin:16px 0 6px">…or paste SVG code</p>
+    <textarea id="code" placeholder="&lt;svg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 100 100&quot;&gt;…&lt;/svg&gt;" spellcheck="false"></textarea>
+    <p class="stats" id="srcStats" style="margin:8px 0 0"></p>
+  </div>
+
+  <div class="card">
+    <p class="label">2 · Dimensions</p>
+    <div class="ctl"><span class="lab">Print width</span><input type="number" id="widthMm" value="100" min="1" max="2000" step="1"> <span class="note">mm — height scales proportionally</span></div>
+    <div class="ctl"><span class="lab">Thickness (extrusion)</span><input type="number" id="depthMm" value="3" min="0.2" max="200" step="0.5"> <span class="note">mm</span></div>
+    <div class="ctl"><span class="lab">Curve smoothness</span><input type="number" id="curves" value="24" min="2" max="96" step="1"> <span class="note">segments per curve — higher = smoother, bigger file</span></div>
+    <div class="ctl"><span class="lab">Bevel</span><label class="check"><input type="checkbox" id="bevel"> Rounded edge (0.4 mm)</label></div>
+    <button class="btn primary" id="build" disabled>Build STL</button>
+    <span class="stats" id="buildStats" style="margin-left:10px"></span>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div class="col"><p class="label">Source</p><div class="stage checker" id="srcStage"><span class="note">No SVG yet.</span></div></div>
+      <div class="col"><p class="label">3D preview — drag to orbit</p><canvas id="gl" width="640" height="640"></canvas></div>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button class="btn primary" id="download" disabled>Download .stl</button>
+      <span class="stats" id="outStats"></span>
+    </div>
+  </div>
+
+  <p class="note">What does and doesn't extrude: <strong>filled</strong> paths, rects, circles, and polygons become solid shapes (holes inside shapes are kept). <strong>Strokes</strong> have no area, so they're ignored — convert strokes to outlines first ("Path → Stroke to Path" in Inkscape). <strong>Text</strong> must be converted to paths too. Overlapping shapes are exported side-by-side; most slicers union them at slice time.</p>
+</main>
+<footer>Online Tools · built with Three.js (MIT)</footer>
+
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from "three";
+import { SVGLoader } from "three/addons/loaders/SVGLoader.js";
+import { STLExporter } from "three/addons/exporters/STLExporter.js";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const $=s=>document.querySelector(s);
+let svgText=null, baseName="model", stlBlob=null, group=null;
+
+// ---------- 3D preview ----------
+const canvas=$("#gl");
+const renderer=new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(640,640,false);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(40,1,0.1,5000);
+const controls=new OrbitControls(camera,canvas); controls.enableDamping=true;
+scene.add(new THREE.AmbientLight(0xffffff,0.75));
+const key=new THREE.DirectionalLight(0xffffff,1.6); key.position.set(60,80,120); scene.add(key);
+const fill=new THREE.DirectionalLight(0xbfd4ee,0.5); fill.position.set(-80,-40,-60); scene.add(fill);
+const mat=new THREE.MeshStandardMaterial({color:0x2f6db3, roughness:0.55, metalness:0.05});
+(function loop(){ requestAnimationFrame(loop); controls.update(); renderer.render(scene,camera); })();
+
+function showErr(m){const e=$("#err"); e.textContent=m; e.style.display="block";}
+function hideErr(){$("#err").style.display="none";}
+function showWarn(m){const e=$("#warn"); e.textContent=m; e.style.display=m?"block":"none";}
+
+function build(){
+  stlBlob=null; $("#download").disabled=true; $("#outStats").textContent="";
+  if(!svgText) return;
+  hideErr(); showWarn("");
+  let data;
+  try{ data=new SVGLoader().parse(svgText); }
+  catch(e){ showErr("That SVG couldn't be parsed: "+e.message); return; }
+  if(!data.paths.length){ showErr("No drawable paths found in this SVG."); return; }
+
+  // source size from the viewBox attribute (fallback: width/height attributes)
+  let srcW=100, srcH=100;
+  const vbAttr=data.xml && data.xml.getAttribute && data.xml.getAttribute("viewBox");
+  if(vbAttr){ const p=vbAttr.trim().split(/[\s,]+/).map(Number); if(p.length===4&&p[2]>0&&p[3]>0){ srcW=p[2]; srcH=p[3]; } }
+  else if(data.xml && data.xml.getAttribute){
+    srcW=parseFloat(data.xml.getAttribute("width"))||100;
+    srcH=parseFloat(data.xml.getAttribute("height"))||100;
+  }
+
+  const widthMm=Math.max(1,+$("#widthMm").value||100);
+  const depthMm=Math.max(0.2,+$("#depthMm").value||3);
+  const curveSegments=Math.min(96,Math.max(2,+$("#curves").value||24));
+  const useBevel=$("#bevel").checked;
+  const s=widthMm/srcW;                     // mm per SVG unit
+  const depthUnits=depthMm/s;               // extrusion in SVG units, pre-scale
+
+  const shapes=[]; let strokeOnly=0;
+  for(const path of data.paths){
+    const fill=path.userData && path.userData.style && path.userData.style.fill;
+    if(fill==="none"){ strokeOnly++; continue; }
+    for(const sh of SVGLoader.createShapes(path)) shapes.push(sh);
+  }
+  if(!shapes.length){ showErr("No filled shapes found — strokes alone can't be extruded. Convert strokes to paths and try again."); return; }
+  if(strokeOnly) showWarn(`${strokeOnly} stroke-only path(s) were skipped — only filled shapes extrude.`);
+
+  if(group){ scene.remove(group); group.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); }
+  group=new THREE.Group();
+  let tris=0;
+  const bevelUnits=0.4/s;
+  for(const shape of shapes){
+    const geo=new THREE.ExtrudeGeometry(shape,{
+      depth:depthUnits, bevelEnabled:useBevel,
+      bevelThickness:useBevel?bevelUnits:0, bevelSize:useBevel?bevelUnits:0, bevelSegments:useBevel?2:0,
+      curveSegments
+    });
+    geo.scale(s,s,s);                       // now in mm, z = depthMm
+    geo.rotateX(Math.PI);                   // undo SVG y-down (proper rotation, winding preserved)
+    const mesh=new THREE.Mesh(geo,mat); group.add(mesh);
+    const g2=geo.index? geo.toNonIndexed():geo; tris+=(g2.attributes.position.count)/3; if(g2!==geo) g2.dispose();
+  }
+  // normalize: min corner at origin, resting on z=0
+  const box=new THREE.Box3().setFromObject(group);
+  const min=box.min;
+  group.children.forEach(m=>m.geometry.translate(-min.x,-min.y,-min.z));
+  const box2=new THREE.Box3().setFromObject(group);
+  const size=box2.getSize(new THREE.Vector3());
+  scene.add(group);
+
+  // frame camera
+  const r=Math.max(size.x,size.y,size.z);
+  camera.position.set(r*0.9,-r*1.1,r*0.9); controls.target.set(size.x/2,size.y/2,size.z/2); controls.update();
+
+  // export binary STL from a clone scene containing only the group
+  const exporter=new STLExporter();
+  const out=exporter.parse(group,{binary:true});
+  stlBlob=new Blob([out],{type:"model/stl"});
+  $("#download").disabled=false;
+  $("#outStats").textContent=`${size.x.toFixed(1)} × ${size.y.toFixed(1)} × ${size.z.toFixed(1)} mm · ${Math.round(tris).toLocaleString()} triangles · ${(stlBlob.size/1024).toFixed(1)} KB`;
+  $("#buildStats").textContent=`${shapes.length} shape(s) extruded`;
+}
+$("#build").addEventListener("click",build);
+["widthMm","depthMm","curves","bevel"].forEach(id=>$("#"+id).addEventListener("change",()=>{ if(svgText) build(); }));
+
+function setSource(text,name){
+  svgText=text; if(name) baseName=name.replace(/\.svg$/i,"")||"model";
+  $("#srcStats").textContent=`${name||"Pasted SVG"} · ${(new Blob([text]).size/1024).toFixed(1)} KB`;
+  $("#srcStage").innerHTML=text;
+  const svg=$("#srcStage svg"); if(svg){ svg.removeAttribute("width"); svg.removeAttribute("height"); }
+  $("#build").disabled=false;
+  build();
+}
+async function loadFile(file){ if(file) setSource(await file.text(), file.name); }
+let codeTimer;
+$("#code").addEventListener("input",e=>{ clearTimeout(codeTimer); codeTimer=setTimeout(()=>{const v=e.target.value.trim(); if(v) setSource(v,null);},500); });
+
+const drop=$("#drop"), fileInput=$("#file");
+drop.addEventListener("click",()=>fileInput.click());
+drop.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();fileInput.click();}});
+fileInput.addEventListener("change",()=>loadFile(fileInput.files[0]));
+["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
+drop.addEventListener("drop",e=>loadFile(e.dataTransfer.files[0]));
+
+$("#download").addEventListener("click",()=>{
+  if(!stlBlob) return;
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(stlBlob); a.download=baseName+".stl"; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+});
+</script>
+</body>
+</html>

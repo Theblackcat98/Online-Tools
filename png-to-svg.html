@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="Trace a PNG (or JPG/WebP) into a real vector SVG with ImageTracer, entirely in your browser.">
+<title>PNG to SVG — Online Tools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light;--bg:#e9eaed;--panel:#f7f7f9;--panel2:#fff;--ink:#1d2126;--mut:#5b6068;--faint:#878c95;--line:#d6d7dc;--line2:#bfc2ca;--chip:#ececf0;--acc:#2f6db3;--acc-strong:#26598f;--acc-ink:#fff;--ok:#2e7d4f;--err-bg:#fdeeee;--err-line:#efc2c2;--err-ink:#8f2d23;--shadow:0 1px 2px rgba(24,28,38,.06),0 8px 28px rgba(24,28,38,.06);--radius:14px}
+@media (prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#121316;--panel:#1a1b1f;--panel2:#222329;--ink:#eceef2;--mut:#a2a6af;--faint:#6f737e;--line:#2d2f36;--line2:#3d404a;--chip:#26272e;--acc:#7db0e6;--acc-strong:#9cc3ee;--acc-ink:#0d1724;--ok:#6fce97;--err-bg:#3a2120;--err-line:#6e3a36;--err-ink:#f0a9a0;--shadow:0 1px 2px rgba(0,0,0,.35),0 8px 28px rgba(0,0,0,.35)}}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Outfit",system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+code,.mono,textarea{font-family:"JetBrains Mono",monospace}
+a{color:var(--acc)}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line)}
+.topbar .brand{font-weight:700;letter-spacing:-.01em;color:var(--ink);text-decoration:none}
+.topbar .spacer{flex:1}
+.pill{font-size:12px;font-weight:600;color:var(--mut);background:var(--chip);border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+main{max-width:980px;margin:0 auto;padding:22px 14px 40px}
+h1{font-size:26px;letter-spacing:-.02em;margin:0 0 6px}
+.sub{color:var(--mut);margin:0 0 18px;max-width:66ch}
+.card{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
+.label{font-size:11.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin:0 0 8px}
+.drop{border:2px dashed var(--line2);border-radius:var(--radius);background:var(--panel);padding:24px 16px;text-align:center;cursor:pointer}
+.drop:hover,.drop.over{border-color:var(--acc);background:var(--chip)}
+.drop strong{display:block;font-size:17px;margin-bottom:4px}
+.drop span{color:var(--mut);font-size:13.5px}
+.row{display:flex;gap:14px;flex-wrap:wrap}
+.col{flex:1 1 300px;min-width:0}
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line2);background:var(--panel2);color:var(--ink);font:inherit;font-size:13.5px;font-weight:600;border-radius:9px;padding:8px 16px;cursor:pointer;box-shadow:var(--shadow)}
+.btn:hover{background:var(--chip)}
+.btn.primary{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.btn.primary:hover{background:var(--acc-strong)}
+.btn[disabled]{opacity:.5;pointer-events:none}
+.checker{background:repeating-conic-gradient(#c9ccd4 0% 25%, #eef0f3 0% 50%) 0 0/16px 16px;border:1px solid var(--line);border-radius:10px}
+@media (prefers-color-scheme:dark){.checker{background:repeating-conic-gradient(#2a2c33 0% 25%, #1d1e23 0% 50%) 0 0/16px 16px}}
+.stage{min-height:180px;display:flex;align-items:center;justify-content:center;padding:10px;overflow:auto}
+.stage img,.stage svg{max-width:100%;max-height:340px;height:auto}
+.err{display:none;background:var(--err-bg);border:1px solid var(--err-line);color:var(--err-ink);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:14px}
+.note{color:var(--mut);font-size:13.5px}
+.stats{font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--mut)}
+footer{color:var(--faint);font-size:13px;text-align:center;padding:18px}
+input[type=file]{display:none}
+input[type=range]{accent-color:var(--acc);width:170px;vertical-align:middle}
+textarea{width:100%;min-height:120px;border:1px solid var(--line2);border-radius:10px;background:var(--panel);color:var(--ink);font-size:11.5px;padding:10px;resize:vertical}
+.ctl{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.ctl .lab{width:130px;font-weight:600;font-size:13.5px}
+.seg{display:inline-flex;background:var(--chip);border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;color:var(--mut);font:inherit;font-size:13.5px;font-weight:600;border-radius:999px;padding:5px 12px;cursor:pointer}
+.seg button.on{background:var(--acc);color:var(--acc-ink)}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="./">← Online Tools</a>
+  <span class="pill">PNG → SVG</span>
+  <div class="spacer"></div>
+  <span class="pill">Runs 100% locally · nothing uploads</span>
+</header>
+<main>
+  <h1>PNG to SVG</h1>
+  <p class="sub">Real vector tracing — not a PNG stuffed inside an SVG wrapper. Your image is quantized into color regions and each region is traced into editable <code>&lt;path&gt;</code> shapes. Best on logos, icons, and flat illustrations; photos trace, but you'll get thousands of paths and a big file.</p>
+
+  <div class="err" id="err"></div>
+
+  <div class="card">
+    <p class="label">1 · Source image</p>
+    <div class="drop" id="drop" role="button" tabindex="0" aria-label="Choose an image">
+      <strong>Drop a PNG here</strong>
+      <span>or click to browse — JPG and WebP also work</span>
+    </div>
+    <input type="file" id="file">
+    <p class="stats" id="srcStats" style="margin:10px 0 0"></p>
+  </div>
+
+  <div class="card">
+    <p class="label">2 · Trace settings</p>
+    <div class="ctl"><span class="lab">Colors</span><input type="range" id="colors" min="2" max="64" value="16"><span class="mono" id="colorsVal">16</span></div>
+    <div class="ctl"><span class="lab">Detail</span>
+      <div class="seg" id="detailSeg">
+        <button data-d="0">Smooth</button>
+        <button data-d="1" class="on">Balanced</button>
+        <button data-d="2">Fine</button>
+      </div>
+      <span class="note">Fine follows edges tighter, at the cost of more paths.</span>
+    </div>
+    <div class="ctl"><span class="lab">Ignore specks ≤</span><input type="range" id="omit" min="0" max="30" value="8"><span class="mono" id="omitVal">8 px</span></div>
+    <div class="ctl"><span class="lab">Max trace width</span>
+      <div class="seg" id="scaleSeg">
+        <button data-w="512">512px</button>
+        <button data-w="1024" class="on">1024px</button>
+        <button data-w="0">Original</button>
+      </div>
+      <span class="note">Large photos are downscaled before tracing — tracing is slow at full res and the extra detail rarely survives.</span>
+    </div>
+    <button class="btn primary" id="trace" disabled>Trace image</button>
+    <span class="stats" id="traceStats" style="margin-left:10px"></span>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div class="col"><p class="label">Original</p><div class="stage checker" id="srcStage"><span class="note">No image yet.</span></div></div>
+      <div class="col"><p class="label">Traced SVG</p><div class="stage checker" id="outStage"><span class="note">Trace result will appear here.</span></div></div>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button class="btn primary" id="download" disabled>Download .svg</button>
+      <button class="btn" id="copy" disabled>Copy SVG code</button>
+      <span class="stats" id="outStats"></span>
+    </div>
+    <p class="label" style="margin:16px 0 6px">SVG output</p>
+    <textarea id="code" readonly placeholder="Traced SVG markup will appear here." spellcheck="false"></textarea>
+  </div>
+
+  <p class="note">Transparent pixels stay transparent. If your PNG is a photo, try 24–32 colors and Smooth first — if the file balloons past a few hundred KB, fewer colors will serve you better than more detail.</p>
+</main>
+<footer>Online Tools · tracing by ImageTracerJS (public domain)</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/imagetracerjs@1.2.6/imagetracer_v1.2.6.js"></script>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+let imgData=null, baseName="image", svgOut=null, maxW=1024;
+
+function showErr(m){const e=$("#err"); e.textContent=m; e.style.display="block";}
+function hideErr(){$("#err").style.display="none";}
+function segWire(id,fn){$(id).addEventListener("click",e=>{const b=e.target.closest("button"); if(!b)return; [...$(id).children].forEach(x=>x.classList.toggle("on",x===b)); fn(b);});}
+segWire("#detailSeg",()=>{});
+segWire("#scaleSeg",b=>{maxW=+b.dataset.w;});
+["colors","omit"].forEach(id=>{
+  $("#"+id).addEventListener("input",e=>{ $("#"+id+"Val").textContent = id==="omit" ? e.target.value+" px" : e.target.value; });
+});
+
+async function loadFile(file){
+  if(!file) return; hideErr();
+  const url=URL.createObjectURL(file);
+  const im=new Image();
+  im.onload=()=>{
+    let w=im.naturalWidth, h=im.naturalHeight;
+    const cap=maxW||Infinity;
+    if(w>cap){h=Math.round(h*cap/w); w=cap;}
+    const c=document.createElement("canvas"); c.width=w; c.height=h;
+    const ctx=c.getContext("2d",{willReadFrequently:true});
+    ctx.drawImage(im,0,0,w,h);
+    try{ imgData=ctx.getImageData(0,0,w,h); }
+    catch(e){ showErr("This browser blocked reading that image's pixels."); return; }
+    baseName=(file.name||"image").replace(/\.[^.]+$/,"")||"image";
+    $("#srcStats").textContent=`${file.name} · traced at ${w}×${h} (source ${im.naturalWidth}×${im.naturalHeight})`;
+    $("#srcStage").innerHTML=""; const v=new Image(); v.src=url; $("#srcStage").appendChild(v);
+    $("#trace").disabled=false;
+    trace();
+  };
+  im.onerror=()=>showErr("That file couldn't be decoded as an image in this browser.");
+  im.src=url;
+}
+
+function trace(){
+  if(!imgData || typeof ImageTracer==="undefined"){
+    if(typeof ImageTracer==="undefined") showErr("The tracing library didn't load — check your connection and reload.");
+    return;
+  }
+  hideErr();
+  const detail=+document.querySelector("#detailSeg button.on").dataset.d;
+  const presets=[{ltres:2.5,qtres:2.5},{ltres:1,qtres:1},{ltres:0.4,qtres:0.4}];
+  const t0=performance.now();
+  // ImageTracer expects a plain imagedata object
+  const src={width:imgData.width,height:imgData.height,data:new Uint8ClampedArray(imgData.data)};
+  svgOut=ImageTracer.imagedataToSVG(src,{
+    numberofcolors:+$("#colors").value,
+    colorquantcycles:3,
+    pathomit:+$("#omit").value,
+    ltres:presets[detail].ltres, qtres:presets[detail].qtres,
+    roundcoords:1, scale:1, strokewidth:0
+  });
+  const ms=Math.round(performance.now()-t0);
+  const paths=(svgOut.match(/<path/g)||[]).length;
+  $("#outStage").innerHTML=svgOut;
+  const outSvg=$("#outStage svg"); if(outSvg){outSvg.style.maxWidth="100%"; outSvg.style.maxHeight="340px"; outSvg.setAttribute("width","100%");}
+  $("#code").value=svgOut;
+  const kb=(new Blob([svgOut]).size/1024).toFixed(1);
+  $("#outStats").textContent=`${paths} paths · ${kb} KB · traced in ${ms} ms`;
+  $("#traceStats").textContent="";
+  $("#download").disabled=false; $("#copy").disabled=false;
+}
+$("#trace").addEventListener("click",trace);
+
+const drop=$("#drop"), fileInput=$("#file");
+drop.addEventListener("click",()=>fileInput.click());
+drop.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();fileInput.click();}});
+fileInput.addEventListener("change",()=>loadFile(fileInput.files[0]));
+["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
+drop.addEventListener("drop",e=>loadFile(e.dataTransfer.files[0]));
+document.addEventListener("paste",e=>{const f=[...e.clipboardData.files][0]; if(f) loadFile(f);});
+
+$("#download").addEventListener("click",()=>{
+  if(!svgOut) return;
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([svgOut],{type:"image/svg+xml"})); a.download=baseName+".svg"; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+});
+$("#copy").addEventListener("click",async()=>{
+  try{ await navigator.clipboard.writeText(svgOut); $("#copy").textContent="Copied ✓"; }
+  catch(e){ $("#code").select(); document.execCommand("copy"); $("#copy").textContent="Copied ✓"; }
+  setTimeout(()=>$("#copy").textContent="Copy SVG code",1600);
+});
+</script>
+</body>
+</html>
