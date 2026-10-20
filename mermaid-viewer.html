@@ -413,6 +413,89 @@
       }
       .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+      /* ---------- gallery overlay (Every Mermaid diagram) ---------- */
+      .gallery-overlay {
+        position: fixed; inset: 0;
+        background: var(--bg);
+        z-index: 80;
+        display: none;
+        flex-direction: column;
+      }
+      .gallery-overlay.open { display: flex; }
+      .gallery-head {
+        background: var(--panel);
+        border-bottom: 1px solid var(--line);
+        padding: 12px 14px 12px;
+        flex: none;
+      }
+      .gallery-head-top { display: flex; align-items: center; gap: 10px; }
+      .gallery-head-top .g-spacer { flex: 1; }
+      .gallery-title { font-size: 19px; font-weight: 700; margin: 0; letter-spacing: -.01em; }
+      .gallery-count {
+        font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--acc);
+        border: 1px solid var(--line2); border-radius: 999px; padding: 3px 9px;
+        background: var(--panel2); white-space: nowrap;
+      }
+      .gallery-sub { margin: 5px 0 0; color: var(--mut); font-size: 13.5px; max-width: 720px; }
+      .gallery-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 11px; }
+      .gallery-search {
+        flex: 1 1 210px; min-width: 0;
+        background: var(--panel2); border: 1px solid var(--line2); border-radius: 9px;
+        padding: 8px 11px; font-size: 13.5px; color: var(--ink);
+      }
+      .gallery-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+      .g-chip {
+        border: 1px solid var(--line2); background: var(--panel2); border-radius: 999px;
+        padding: 5px 11px; font-size: 12.5px; font-weight: 600; color: var(--mut);
+      }
+      .g-chip.on { background: var(--acc); border-color: var(--acc); color: var(--acc-ink); }
+      .gallery-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 14px; }
+      .gallery-grid {
+        display: grid; gap: 12px;
+        grid-template-columns: repeat(auto-fill, minmax(min(400px, 100%), 1fr));
+        max-width: 1440px; margin: 0 auto; align-items: start;
+      }
+      .g-card {
+        background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+        box-shadow: var(--shadow); padding: 14px;
+        display: flex; flex-direction: column; gap: 8px; min-width: 0;
+      }
+      .g-card-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+      .g-num { font-family: "JetBrains Mono", monospace; font-size: 12px; font-weight: 600; color: var(--acc); }
+      .g-name { font-size: 16.5px; font-weight: 700; }
+      .g-cat {
+        font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase;
+        color: var(--faint); margin-left: auto; text-align: right;
+      }
+      .g-blurb { margin: 0; color: var(--mut); font-size: 13.5px; }
+      .g-uses { margin: 0; font-size: 12.5px; color: var(--faint); }
+      .g-uses strong { color: var(--mut); font-weight: 600; }
+      .g-stage {
+        background-color: var(--panel2);
+        background-image: radial-gradient(circle, var(--dot) 1px, transparent 1.1px);
+        background-size: 22px 22px;
+        border: 1px solid var(--line); border-radius: 10px;
+        padding: 14px; overflow: auto; max-height: 340px;
+        display: flex; align-items: flex-start; justify-content: center;
+      }
+      .g-stage svg { max-width: 100%; height: auto; }
+      .g-stage .g-rendering { color: var(--faint); font-size: 13px; }
+      .g-stage .g-render-err { color: var(--err-ink); font-size: 13px; }
+      .g-note { font-size: 12.5px; color: var(--mut); background: var(--chip); border-radius: 8px; padding: 7px 10px; }
+      .g-source {
+        display: none; margin: 0; background: var(--chip); border-radius: 10px;
+        padding: 10px 12px; font-family: "JetBrains Mono", monospace; font-size: 12px;
+        line-height: 1.55; white-space: pre-wrap; word-break: break-word;
+        max-height: 220px; overflow: auto;
+      }
+      .g-source.open { display: block; }
+      .g-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; }
+      .small-btn.primary { background: var(--acc); border-color: var(--acc); color: var(--acc-ink); }
+      .small-btn.primary:hover { background: var(--acc-strong); border-color: var(--acc-strong); }
+      .gallery-empty { display: none; text-align: center; color: var(--mut); padding: 44px 16px; font-size: 14px; }
+      .gallery-empty strong { color: var(--ink); font-size: 16px; }
+      .gallery-empty.show { display: block; }
+
       /* ---------- responsive ---------- */
       @media (max-width: 900px) {
         main { grid-template-columns: 1fr; padding: 10px; gap: 10px; }
@@ -446,6 +529,11 @@
           <option value="base">Base</option>
         </select>
       </span>
+
+      <button class="btn" id="gallery-btn" type="button" title="Show every Mermaid diagram type — the full gallery">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        <span class="btn-text">All diagrams</span>
+      </button>
 
       <div class="tabs" role="tablist" aria-label="Pane">
         <button id="tab-code" class="on" role="tab" aria-selected="true">Code</button>
@@ -543,6 +631,29 @@
       <span class="status-item mono" id="doc-stats">0 lines · 0 chars</span>
       <span class="status-item mono" id="version-label">Mermaid —</span>
     </footer>
+
+    <div class="gallery-overlay" id="gallery-overlay" role="dialog" aria-modal="true" aria-labelledby="gallery-title">
+      <div class="gallery-head">
+        <div class="gallery-head-top">
+          <h2 class="gallery-title" id="gallery-title">Every Mermaid diagram</h2>
+          <span class="gallery-count">23 types</span>
+          <span class="g-spacer"></span>
+          <button class="btn" id="gallery-close" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <span class="btn-text">Close</span>
+          </button>
+        </div>
+        <p class="gallery-sub">The full gallery — every diagram type Mermaid supports, each with a working example rendered live. Open any one in the editor to start from it, or copy its source.</p>
+        <div class="gallery-tools">
+          <input class="gallery-search" id="gallery-search" type="search" placeholder="Search diagrams or use cases…" aria-label="Search diagram types" autocomplete="off" />
+          <div class="gallery-chips" id="gallery-chips" role="group" aria-label="Filter by category"></div>
+        </div>
+      </div>
+      <div class="gallery-scroll" id="gallery-scroll">
+        <div class="gallery-grid" id="gallery-grid"></div>
+        <div class="gallery-empty" id="gallery-empty"><strong>No matching diagrams</strong><br />Try a different term or choose another category.</div>
+      </div>
+    </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -674,6 +785,364 @@
 "    y-axis \"Hours\" 0 --> 8\n" +
 "    bar [2, 3, 5, 4, 6, 7, 3]\n" +
 "    line [2, 3, 5, 4, 6, 7, 3]" }
+      ];
+
+      /* ---- Every Mermaid diagram: the full gallery (23 types) ---- */
+      var GALLERY_CATS = [
+        { id: "essentials", label: "Essentials" },
+        { id: "planning", label: "Planning & product" },
+        { id: "charts", label: "Charts & data" },
+        { id: "technical", label: "Technical systems" },
+        { id: "utility", label: "Utility" }
+      ];
+
+      var GALLERY = [
+        { id: "flowchart", name: "Flowchart", category: "essentials",
+          blurb: "Nodes and edges for processes, decisions, and flows—the workhorse of the Mermaid family.",
+          uses: ["CI/CD pipelines", "Decision trees", "Algorithms and business processes"],
+          code: `flowchart TD
+    A[Push to main] --> B{CI checks pass?}
+    B -->|Yes| C[Build container image]
+    B -->|No| D[Notify author]
+    D --> E[Fix and re-push]
+    E --> B
+    C --> F[Push to registry]
+    F --> G{Deploy approved?}
+    G -->|Yes| H[Rolling deploy to prod]
+    G -->|No| I[Hold for review]
+    H --> J[Smoke tests]
+    J --> K{Healthy?}
+    K -->|Yes| L[Done]
+    K -->|No| M[Rollback]` },
+        { id: "sequence-diagram", name: "Sequence Diagram", category: "essentials",
+          blurb: "How actors and systems exchange messages over time—the classic for API and protocol docs.",
+          uses: ["API request flows", "Auth handshakes (OAuth, SAML)", "Debugging distributed interactions"],
+          code: `sequenceDiagram
+    autonumber
+    participant U as User
+    participant C as Client App
+    participant A as Auth Server
+    participant R as Resource API
+
+    U->>C: Click "Sign in"
+    C->>A: GET /authorize (client_id, scope)
+    A->>U: Login page
+    U->>A: Enter credentials
+    A->>C: Redirect with auth code
+    C->>A: POST /token (code, client_secret)
+    A-->>C: access_token + refresh_token
+    C->>R: GET /profile (Bearer token)
+    R-->>C: User profile JSON
+    C-->>U: Signed-in dashboard
+    Note over C,R: Tokens expire in 1h - the refresh_token renews them` },
+        { id: "class-diagram", name: "Class Diagram", category: "essentials",
+          blurb: "UML classes, members, and relationships for object-oriented designs.",
+          uses: ["Domain modeling", "Codebase documentation", "Planning refactors"],
+          code: `classDiagram
+    class Vehicle {
+        +String make
+        +String model
+        +int year
+        +start() void
+        +stop() void
+    }
+    class Car {
+        +int doors
+        +openTrunk() void
+    }
+    class Engine {
+        +int horsepower
+        +ignite() void
+    }
+    class Driver {
+        +String name
+        +drive(Vehicle v) void
+    }
+    Vehicle <|-- Car
+    Car *-- Engine : contains
+    Driver --> Vehicle : drives` },
+        { id: "state-diagram", name: "State Diagram", category: "essentials",
+          blurb: "States and the transitions between them—perfect for anything with a lifecycle.",
+          uses: ["Order or ticket lifecycles", "UI component states", "Protocol state machines"],
+          code: `stateDiagram-v2
+    [*] --> Created
+    Created --> Paid : payment received
+    Created --> Cancelled : timeout
+    Paid --> Shipped : packed
+    Paid --> Refunded : chargeback
+    Shipped --> Delivered : signed
+    Shipped --> Returned : customer return
+    Delivered --> [*]
+    Cancelled --> [*]
+    Refunded --> [*]
+    Returned --> Refunded : refund issued` },
+        { id: "entity-relationship", name: "Entity Relationship Diagram", category: "essentials",
+          blurb: "Database tables, attributes, and cardinalities without opening a schema tool.",
+          uses: ["Database schema design", "Onboarding to an existing database", "Data-model reviews"],
+          code: `erDiagram
+    CUSTOMER ||--o{ ORDER : places
+    ORDER ||--|{ LINE_ITEM : contains
+    PRODUCT ||--o{ LINE_ITEM : "listed in"
+    CUSTOMER {
+        string id PK
+        string name
+        string email
+    }
+    ORDER {
+        string id PK
+        string customer_id FK
+        date placed_at
+        string status
+    }
+    LINE_ITEM {
+        string order_id FK
+        string product_id FK
+        int quantity
+    }
+    PRODUCT {
+        string id PK
+        string name
+        float price
+    }` },
+        { id: "user-journey", name: "User Journey", category: "planning",
+          blurb: "A user's experience across steps, scored for satisfaction—UX's favorite one-pager.",
+          uses: ["UX research synthesis", "Customer experience mapping", "Pain-point spotting"],
+          code: `journey
+    title Morning coffee run
+    section Leave home
+      Grab keys: 5: Me
+      Walk to car: 4: Me
+    section Buy coffee
+      Queue up: 3: Me, Barista
+      Order oat latte: 5: Me
+      Wait for drink: 2: Me
+      Pay: 4: Me
+    section Head to work
+      Drive to office: 5: Me` },
+        { id: "gantt-chart", name: "Gantt Chart", category: "planning",
+          blurb: "Tasks on a timeline with dependencies—a project plan that fits in a Markdown file.",
+          uses: ["Release planning", "Sprint or milestone tracking", "Dependency visualization"],
+          code: `gantt
+    title Website relaunch plan
+    dateFormat YYYY-MM-DD
+    section Design
+    Wireframes      :done,   des1, 2026-10-01, 2026-10-07
+    Visual design   :active, des2, 2026-10-08, 2026-10-14
+    section Build
+    Frontend        :        dev1, after des2, 10d
+    Backend API     :        dev2, after des2, 12d
+    section Launch
+    QA pass         :        qa1, after dev1, 5d
+    Deploy to prod  :crit,   dep1, after qa1, 2d` },
+        { id: "requirement-diagram", name: "Requirement Diagram", category: "planning",
+          blurb: "Requirements, system elements, and how they satisfy, trace, and verify each other.",
+          uses: ["Systems engineering docs", "Compliance traceability", "Acceptance criteria mapping"],
+          code: `requirementDiagram
+    requirement login_req {
+        id: 1
+        text: "Users can sign in with email and password."
+        risk: high
+        verifymethod: test
+    }
+    requirement sso_req {
+        id: 2
+        text: "Users can sign in with Google SSO."
+        risk: medium
+        verifymethod: inspection
+    }
+    element web_app {
+        type: "web application"
+    }
+    web_app - satisfies -> login_req
+    web_app - satisfies -> sso_req
+    sso_req - traces -> login_req` },
+        { id: "mindmap", name: "Mindmap", category: "planning",
+          blurb: "Ideas radiating from a central topic—brainstorming that can live directly in the doc.",
+          uses: ["Brainstorming sessions", "Topic outlines", "Knowledge mapping"],
+          code: `mindmap
+  root((Mermaid))
+    Diagrams
+      Flowchart
+      Sequence
+      Class
+      State
+      ER
+    Charts
+      Gantt
+      Pie
+      Quadrant
+      XY
+      Radar
+    Extras
+      Idea maps
+      Roadmaps
+      Gitgraph
+      Kanban` },
+        { id: "timeline", name: "Timeline", category: "planning",
+          blurb: "Events laid out chronologically—history lessons and roadmaps in plain text.",
+          uses: ["Project roadmaps", "Company history", "Incident timelines"],
+          code: `timeline
+    title History of the web
+    1990 : Tim Berners-Lee proposes the World Wide Web
+    1993 : Mosaic browser launches
+    1998 : Google founded
+    2004 : Web 2.0 and social media take off
+    2007 : iPhone launches the mobile era
+    2022 : ChatGPT sparks the AI wave` },
+        { id: "kanban-board", name: "Kanban Board", category: "planning",
+          blurb: "Columns of cards for work in progress—a board that can live in your repo.",
+          uses: ["Lightweight task tracking", "Sprint boards in docs", "Personal to-do walls"],
+          code: `kanban
+  Backlog
+    setup[Set up repo]
+    design[Draft UI mockups]
+  In Progress
+    auth[Implement auth flow]
+  Review
+    api[REST API endpoints]
+  Done
+    ci[CI pipeline]` },
+        { id: "pie-chart", name: "Pie Chart", category: "charts",
+          blurb: "Part-of-a-whole proportions in a few lines, with no separate charting library required.",
+          uses: ["Survey results", "Market or traffic share", "Budget breakdowns"],
+          code: `pie title Browser share, Sept 2026
+    "Chrome" : 62
+    "Safari" : 19
+    "Edge" : 6
+    "Firefox" : 5
+    "Other" : 8` },
+        { id: "quadrant-chart", name: "Quadrant Chart", category: "charts",
+          blurb: "Two axes, four boxes—the classic 2×2 matrix for prioritization.",
+          uses: ["Feature prioritization", "Risk matrices", "Market positioning"],
+          code: `quadrantChart
+    title Prioritize features
+    x-axis "Low effort" --> "High effort"
+    y-axis "Low value" --> "High value"
+    quadrant-1 "Do later"
+    quadrant-2 "Quick wins"
+    quadrant-3 "Skip"
+    quadrant-4 "Big bets"
+    Dark mode: [0.3, 0.8]
+    SSO login: [0.2, 0.9]
+    Rewrite in Rust: [0.9, 0.5]
+    New logo: [0.2, 0.2]` },
+        { id: "xy-chart", name: "XY Chart", category: "charts",
+          blurb: "Bar and line charts on x/y axes—the spreadsheet chart you can version-control.",
+          uses: ["Metrics dashboards in docs", "Trend reporting", "A/B test results"],
+          code: `xychart-beta
+    title "Signups per month"
+    x-axis [Jan, Feb, Mar, Apr, May, Jun]
+    y-axis "Signups" 0 --> 500
+    bar [120, 200, 180, 320, 410, 480]
+    line [100, 150, 220, 260, 380, 450]` },
+        { id: "sankey-diagram", name: "Sankey Diagram", category: "charts",
+          blurb: "Flows with widths proportional to quantity—see where energy, money, or users go.",
+          uses: ["Energy or budget flows", "User funnels", "Resource allocation"],
+          code: `sankey-beta
+Solar, Grid, 120
+Wind, Grid, 80
+Grid, Homes, 110
+Grid, Industry, 60
+Grid, Loss, 30` },
+        { id: "radar-chart", name: "Radar Chart", category: "charts",
+          blurb: "A multi-axis comparison on a spider web, ideal for compact spec-sheet showdowns.",
+          uses: ["Product comparisons", "Skill assessments", "Benchmark summaries"],
+          code: `radar-beta
+  title "Phone comparison"
+  axis b["Battery"], c["Camera"], s["Screen"], p["Price"], w["Weight"]
+  curve i["Phone A"]{80, 90, 85, 40, 70}
+  curve j["Phone B"]{70, 75, 90, 80, 60}
+  max 100
+  min 0` },
+        { id: "treemap", name: "Treemap", category: "charts",
+          blurb: "Nested rectangles sized by value—a hierarchy whose weight is visible at a glance.",
+          uses: ["Budget breakdowns", "Disk or resource usage", "Portfolio composition"],
+          code: `treemap-beta
+"Q3 Revenue"
+    "Hardware": 420
+    "Software": 310
+    "Services"
+        "Consulting": 120
+        "Support": 90` },
+        { id: "git-graph", name: "Git Graph", category: "technical",
+          blurb: "Branches, commits, merges, and tags as a picture—worth a thousand git log commands.",
+          uses: ["Explaining branching strategy", "Release-note visuals", "Git tutorials"],
+          code: `gitGraph
+    commit id: "init"
+    branch feature
+    checkout feature
+    commit id: "add parser"
+    commit id: "add tests"
+    checkout main
+    commit id: "hotfix"
+    checkout feature
+    merge main
+    checkout main
+    merge feature
+    commit id: "release v1.0" tag: "v1.0"` },
+        { id: "c4-diagram", name: "C4 Diagram", category: "technical",
+          blurb: "Experimental C4-model syntax for context, container, and component views of software architecture.",
+          uses: ["System context docs", "Architecture reviews", "Onboarding engineers"],
+          code: `C4Context
+    title Online bookstore - system context
+    Person(customer, "Customer", "Buys books online")
+    System(shop, "Bookstore", "Lets customers browse and order books")
+    System_Ext(payments, "Payment gateway", "Processes card payments")
+    SystemDb(warehouse, "Warehouse DB", "Tracks stock and shipments")
+
+    Rel(customer, shop, "Browses and orders")
+    Rel(shop, payments, "Charges cards via")
+    Rel(shop, warehouse, "Reads and writes")` },
+        { id: "packet-diagram", name: "Packet Diagram", category: "technical",
+          blurb: "Bit-level layouts of network packets and binary formats.",
+          uses: ["Protocol documentation", "Binary format specifications", "Networking tutorials"],
+          code: `packet-beta
+0-15: "Source Port"
+16-31: "Destination Port"
+32-63: "Sequence Number"
+64-95: "Acknowledgment Number"
+96-99: "Data Offset"
+100-105: "Reserved"
+106-111: "Flags"
+112-127: "Window Size"
+128-143: "Checksum"
+144-159: "Urgent Pointer"` },
+        { id: "block-diagram", name: "Block Diagram", category: "technical",
+          blurb: "Composable blocks with columns and nesting for quick infrastructure sketches.",
+          uses: ["Infrastructure sketches", "System block layouts", "Hardware diagrams"],
+          code: `block-beta
+    columns 3
+    db["Database"] app["App Server"] cache["Cache"]
+    block:net:3
+        columns 1
+        lb["Load Balancer"]
+    end
+    web1["Web 1"] web2["Web 2"] web3["Web 3"]
+    lb --> web1
+    lb --> web2
+    lb --> web3
+    web1 --> app
+    app --> db
+    app --> cache` },
+        { id: "architecture-diagram", name: "Architecture Diagram", category: "technical",
+          blurb: "Cloud-style architecture with icons, groups, and directional edges.",
+          uses: ["Cloud topology docs", "Deployment overviews", "Network diagrams"],
+          code: `architecture-beta
+    group cloud(cloud)[Cloud VPC]
+
+    service lb(server)[Load Balancer] in cloud
+    service api(server)[API Servers] in cloud
+    service db(database)[Postgres] in cloud
+    service cache(disk)[Redis] in cloud
+
+    lb:R -- L:api
+    api:B -- T:db
+    api:B -- T:cache` },
+        { id: "info", name: "Info", category: "utility",
+          blurb: "A diagnostic box showing the running Mermaid version—meta, but it counts as a type.",
+          uses: ["Debugging render issues", "Confirming the Mermaid version in a document pipeline"],
+          note: "The Info diagram is intentionally minimal: its entire source is the word “info.”",
+          code: `info` }
       ];
 
       function $(id) { return document.getElementById(id); }
@@ -947,6 +1416,156 @@
         state.theme = e.target.value;
         initMermaid();
         render();
+        galleryBuilt = false;
+      });
+
+      /* ---------------- gallery overlay ---------------- */
+      var galleryOverlay = $("gallery-overlay"), galleryGrid = $("gallery-grid");
+      var gallerySearch = $("gallery-search"), galleryChips = $("gallery-chips");
+      var galleryEmpty = $("gallery-empty"), galleryBtn = $("gallery-btn");
+      var galleryBuilt = false, gallerySeq = 0, galleryCat = "all";
+
+      function catLabel(id) {
+        for (var i = 0; i < GALLERY_CATS.length; i++) if (GALLERY_CATS[i].id === id) return GALLERY_CATS[i].label;
+        return id;
+      }
+      function escHtml(s) {
+        return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      }
+
+      function buildGalleryChips() {
+        var html = '<button class="g-chip on" type="button" data-gcat="all">All 23</button>';
+        GALLERY_CATS.forEach(function (c) {
+          html += '<button class="g-chip" type="button" data-gcat="' + c.id + '">' + escHtml(c.label) + "</button>";
+        });
+        galleryChips.innerHTML = html;
+      }
+
+      function buildGalleryCards() {
+        galleryGrid.innerHTML = GALLERY.map(function (item, i) {
+          var search = (item.name + " " + item.blurb + " " + item.uses.join(" ")).toLowerCase();
+          return '<article class="g-card" data-gsearch="' + escHtml(search) + '" data-gcat="' + item.category + '">' +
+            '<div class="g-card-head"><span class="g-num">' + String(i + 1).padStart(2, "0") + '</span>' +
+            '<span class="g-name">' + escHtml(item.name) + '</span>' +
+            '<span class="g-cat">' + escHtml(catLabel(item.category)) + "</span></div>" +
+            '<p class="g-blurb">' + escHtml(item.blurb) + "</p>" +
+            '<p class="g-uses"><strong>Good for:</strong> ' + escHtml(item.uses.join(" · ")) + "</p>" +
+            (item.note ? '<div class="g-note">' + escHtml(item.note) + "</div>" : "") +
+            '<div class="g-stage" id="g-stage-' + item.id + '"><span class="g-rendering">Rendering…</span></div>' +
+            '<pre class="g-source" id="g-source-' + item.id + '">' + escHtml(item.code) + "</pre>" +
+            '<div class="g-actions">' +
+              '<button class="small-btn primary" type="button" data-gopen="' + item.id + '">Open in editor</button>' +
+              '<button class="small-btn" type="button" data-gcopy="' + item.id + '">Copy source</button>' +
+              '<button class="small-btn" type="button" data-gsrc="' + item.id + '" aria-expanded="false">View source</button>' +
+            "</div></article>";
+        }).join("");
+      }
+
+      function renderGalleryDiagrams() {
+        if (!mermaidReady) {
+          GALLERY.forEach(function (item) {
+            var el = $("g-stage-" + item.id);
+            if (el) el.innerHTML = '<span class="g-render-err">Preview unavailable — Mermaid didn\'t load. You can still open the source in the editor.</span>';
+          });
+          return;
+        }
+        var seq = ++gallerySeq;
+        var chain = Promise.resolve();
+        GALLERY.forEach(function (item, i) {
+          chain = chain.then(function () {
+            if (seq !== gallerySeq) return;
+            var el = $("g-stage-" + item.id);
+            if (!el) return;
+            return window.mermaid.render("gal-" + seq + "-" + i, item.code).then(function (res) {
+              if (seq !== gallerySeq) return;
+              el.innerHTML = res.svg;
+              if (typeof res.bindFunctions === "function") res.bindFunctions(el);
+              var svg = el.querySelector("svg");
+              if (svg) {
+                svg.removeAttribute("height");
+                svg.style.maxWidth = "100%";
+                svg.style.height = "auto";
+                svg.setAttribute("role", "img");
+                svg.setAttribute("aria-label", item.name + " example");
+              }
+            }).catch(function (err) {
+              if (seq !== gallerySeq) return;
+              var msg = (err && err.message) ? err.message : String(err);
+              el.innerHTML = '<span class="g-render-err">This example didn\'t render under Mermaid ' + PINNED_VERSION + " — open it in the editor to inspect the source.</span>";
+            });
+          });
+        });
+      }
+
+      function applyGalleryFilter() {
+        var q = gallerySearch.value.trim().toLowerCase();
+        var shown = 0;
+        galleryGrid.querySelectorAll(".g-card").forEach(function (card) {
+          var okCat = galleryCat === "all" || card.getAttribute("data-gcat") === galleryCat;
+          var okQ = !q || card.getAttribute("data-gsearch").indexOf(q) !== -1;
+          var vis = okCat && okQ;
+          card.style.display = vis ? "" : "none";
+          if (vis) shown++;
+        });
+        galleryEmpty.classList.toggle("show", shown === 0);
+      }
+
+      function openGallery() {
+        if (!galleryBuilt) {
+          buildGalleryChips();
+          buildGalleryCards();
+          galleryBuilt = true;
+          renderGalleryDiagrams();
+        }
+        galleryOverlay.classList.add("open");
+        $("gallery-scroll").scrollTop = 0;
+        applyGalleryFilter();
+        $("gallery-close").focus();
+      }
+      function closeGallery() {
+        galleryOverlay.classList.remove("open");
+        galleryBtn.focus();
+      }
+      galleryBtn.addEventListener("click", openGallery);
+      $("gallery-close").addEventListener("click", closeGallery);
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && galleryOverlay.classList.contains("open")) closeGallery();
+      });
+      gallerySearch.addEventListener("input", applyGalleryFilter);
+      galleryChips.addEventListener("click", function (e) {
+        var chip = e.target.closest(".g-chip");
+        if (!chip) return;
+        galleryCat = chip.getAttribute("data-gcat");
+        galleryChips.querySelectorAll(".g-chip").forEach(function (c) { c.classList.toggle("on", c === chip); });
+        applyGalleryFilter();
+      });
+      galleryGrid.addEventListener("click", function (e) {
+        var openBtn = e.target.closest("[data-gopen]");
+        var copyBtn = e.target.closest("[data-gcopy]");
+        var srcBtn = e.target.closest("[data-gsrc]");
+        function findItem(id) {
+          for (var i = 0; i < GALLERY.length; i++) if (GALLERY[i].id === id) return GALLERY[i];
+          return null;
+        }
+        if (openBtn) {
+          var item = findItem(openBtn.getAttribute("data-gopen"));
+          if (!item) return;
+          editor.value = item.code;
+          updateMeta();
+          closeGallery();
+          render();
+          if (window.matchMedia("(max-width: 900px)").matches) showPane("preview");
+          toast("Loaded " + item.name + " in the editor");
+        } else if (copyBtn) {
+          var item2 = findItem(copyBtn.getAttribute("data-gcopy"));
+          if (item2) copyText(item2.code, "Source copied — " + item2.name);
+        } else if (srcBtn) {
+          var panel = $("g-source-" + srcBtn.getAttribute("data-gsrc"));
+          if (!panel) return;
+          var open = panel.classList.toggle("open");
+          srcBtn.setAttribute("aria-expanded", String(open));
+          srcBtn.textContent = open ? "Hide source" : "View source";
+        }
       });
 
       /* ---------------- copy & export ---------------- */
