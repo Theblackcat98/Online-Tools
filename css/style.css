@@ -226,7 +226,7 @@ textarea:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--ring);outline:
 .nav-dropdown-content{
   display:none;
   position:absolute;
-  top:53px;
+  top:calc(100% - 1px);
   padding:1rem 0.75rem;
   background-color:var(--panel);
   border-bottom:1px solid var(--line);
