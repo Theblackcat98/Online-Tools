@@ -292,6 +292,19 @@
         .mini-cap{display:none}
         .mini-mode{padding:5px 10px}
       }
+
+      /* ---------- additions: persistence / undo / seed sharing ---------- */
+      .save-note{font-size:12px;color:var(--chrome-faint);font-weight:600}
+      .seed-lab{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px}
+      .seed-lab label{margin-bottom:0}
+      .seed-valwrap{display:inline-flex;align-items:baseline;gap:2px;color:var(--chrome-mut);font-size:13px}
+      input.numin-seed{
+        background:transparent;border:1px solid transparent;border-radius:6px;color:var(--chrome-ink);
+        font-size:13px;padding:2px 3px;text-align:right;width:56px;
+      }
+      input.numin-seed:hover{border-color:var(--chrome-line2)}
+      input.numin-seed:focus{border-color:var(--chrome-acc);background:var(--chrome-panel);outline:none}
+      .preset[aria-pressed="true"]{border-color:var(--chrome-acc);box-shadow:inset 0 0 0 1px var(--chrome-acc)}
     </style>
   </head>
   <body>
@@ -306,6 +319,10 @@
         <button id="modeLight" aria-pressed="true">Light</button>
         <button id="modeDark" aria-pressed="false">Dark</button>
       </div>
+      <button class="btn small" id="undoBtn" disabled title="Undo the last change (Ctrl+Z)">Undo</button>
+      <button class="btn small" id="redoBtn" disabled title="Redo (Ctrl+Shift+Z)">Redo</button>
+      <span class="save-note" id="saveNote" role="status">Autosaved in this browser</span>
+      <button class="btn small" id="resetBtn" title="Clear the saved work and restore the default palettes">Reset defaults</button>
       <button class="btn" id="diceBtn" title="Random seed palette">Random seed</button>
       <button class="btn primary" id="exportJump">Export CSS</button>
       <div class="mobile-bar" id="mobileBar">
@@ -330,11 +347,11 @@
           <!-- seed controls -->
           <div id="seedPanel" class="seed-grid" hidden>
             <div class="seed-row">
-              <label for="seedHue">Brand hue — <span class="seed-val mono" id="seedHueVal"></span></label>
+              <div class="seed-lab"><label for="seedHue">Brand hue</label><span class="seed-valwrap"><input class="mono numin-seed" id="seedHueVal" inputmode="numeric" aria-label="Brand hue in degrees" /><span aria-hidden="true">°</span></span></div>
               <input type="range" class="hue-track" id="seedHue" min="0" max="360" step="1" value="18" />
             </div>
             <div class="seed-row">
-              <label for="seedSat">Color intensity — <span class="seed-val mono" id="seedSatVal"></span></label>
+              <div class="seed-lab"><label for="seedSat">Color intensity</label><span class="seed-valwrap"><input class="mono numin-seed" id="seedSatVal" inputmode="numeric" aria-label="Color intensity in percent" /><span aria-hidden="true">%</span></span></div>
               <input type="range" class="tok" id="seedSat" min="0" max="100" step="1" value="62" style="background:linear-gradient(90deg,#9a9a9e,#d84f2f)" />
             </div>
             <div class="seed-row">
@@ -354,8 +371,10 @@
             <div class="seed-actions">
               <button class="btn primary" id="generateBtn">Generate both palettes</button>
               <button class="btn" id="deriveDarkBtn" title="Build the dark palette by inverting the lightness of your light palette">Derive dark from light</button>
+              <button class="btn" id="copySeedLinkBtn" title="Copy a link that recreates this seed from scratch">Copy seed link</button>
             </div>
-            <p class="foot-note">Generating rebuilds every token in <strong>both</strong> modes from the seed, using OKLCH so steps stay perceptually even. Fine-tune individual tokens in the steps that follow — nothing here is locked in.</p>
+            <p class="foot-note mono" id="seedSummary" style="margin-top:10px"></p>
+            <p class="foot-note">Generating rebuilds every token in <strong>both</strong> modes from the seed, using OKLCH so steps stay perceptually even. Fine-tune individual tokens in the steps that follow — nothing here is locked in. Every rebuild can be undone (Ctrl+Z), and your work autosaves to this browser as you go.</p>
           </div>
 
           <!-- token editor -->
@@ -788,6 +807,122 @@
     const $ = id => document.getElementById(id);
     const seedEls = { hue: $("seedHue"), sat: $("seedSat"), harmony: $("seedHarmony") };
 
+    /* ================= persistence + undo =================
+       State (palettes, seed, mode, step, export options) autosaves to
+       localStorage on every change and is restored on load. A shareable
+       ?seed=hue,sat,harmony URL parameter recreates a seed from scratch
+       and takes precedence over the saved state. Undo is a snapshot stack
+       of {palettes, seed}; discrete actions push before mutating, and
+       continuous controls (sliders, color picker, text fields) capture a
+       snapshot when a gesture/focus session begins and push it when the
+       gesture commits a different value. */
+    const STORE_KEY = "ctw-state-v1";
+    let undoStack = [], redoStack = [];
+    let auditView = "light";
+    const auditMode = () => auditView;
+    function currentSeed() { return { hue: +seedEls.hue.value, sat: +seedEls.sat.value, harmony: +seedEls.harmony.value }; }
+    function snapshot() { return JSON.stringify({ palettes, seed: currentSeed() }); }
+    function updateUndoUI() { $("undoBtn").disabled = !undoStack.length; $("redoBtn").disabled = !redoStack.length; }
+    function pushUndo() {
+      const s = snapshot();
+      if (undoStack[undoStack.length - 1] === s) return;
+      undoStack.push(s); if (undoStack.length > 60) undoStack.shift();
+      redoStack = []; updateUndoUI();
+    }
+    let gestureSnap = null;
+    function gestureBegin() { if (!gestureSnap) gestureSnap = snapshot(); }
+    function gestureEnd() {
+      if (!gestureSnap) return;
+      if (gestureSnap !== snapshot()) {
+        undoStack.push(gestureSnap); if (undoStack.length > 60) undoStack.shift();
+        redoStack = []; updateUndoUI();
+      }
+      gestureSnap = null;
+    }
+    function applySnapshot(s) {
+      const d = JSON.parse(s);
+      palettes = d.palettes;
+      seedEls.hue.value = d.seed.hue; seedEls.sat.value = d.seed.sat; seedEls.harmony.value = String(d.seed.harmony);
+      updateSeedLabels(); renderEditor(); refreshDerived(); renderStepper();
+    }
+    function undo() { if (!undoStack.length) return; redoStack.push(snapshot()); applySnapshot(undoStack.pop()); updateUndoUI(); toast("Undone"); }
+    function redo() { if (!redoStack.length) return; undoStack.push(snapshot()); applySnapshot(redoStack.pop()); updateUndoUI(); toast("Redone"); }
+
+    let savedTimer = null;
+    function flashSaved() {
+      const el = $("saveNote"); if (!el) return;
+      el.textContent = "Saved ✓";
+      clearTimeout(savedTimer);
+      savedTimer = setTimeout(() => { el.textContent = "Autosaved in this browser"; }, 1800);
+    }
+    let lastSeedQs = null;
+    function saveState() {
+      try { localStorage.setItem(STORE_KEY, JSON.stringify({ v: 1, palettes, mode, step, exportState, seed: currentSeed() })); flashSaved(); } catch (e) {}
+      const s = currentSeed(), qs = s.hue + "," + s.sat + "," + s.harmony;
+      if (qs !== lastSeedQs) {
+        lastSeedQs = qs;
+        try { const u = new URL(location.href); u.searchParams.set("seed", qs); history.replaceState(null, "", u); } catch (e) {}
+      }
+    }
+    function sanitizePalettes(raw) {
+      const fallback = generatePalettes(18, 62, 180);
+      const out = {};
+      for (const m of ["light", "dark"]) {
+        out[m] = {};
+        for (const k of ALL_KEYS) {
+          const c = raw && raw[m] && raw[m][k];
+          out[m][k] = c && isFinite(c.l) && isFinite(c.c) && isFinite(c.h)
+            ? { l: clamp(+c.l, 0, 1), c: clamp(+c.c, 0, 0.4), h: ((+c.h % 360) + 360) % 360 }
+            : { ...fallback[m][k] };
+        }
+      }
+      return out;
+    }
+    function seedFromUrl() {
+      try {
+        const s = new URLSearchParams(location.search).get("seed");
+        if (!s) return null;
+        const parts = s.split(",").map(Number);
+        if (parts.length !== 3 || parts.some(isNaN)) return null;
+        return { hue: clamp(Math.round(parts[0]), 0, 360), sat: clamp(Math.round(parts[1]), 0, 100), harmony: [0, 32, 120, 150, 180].includes(parts[2]) ? parts[2] : 180 };
+      } catch (e) { return null; }
+    }
+    function syncExportSegs() {
+      $("fmtCss").setAttribute("aria-pressed", exportState.format === "css");
+      $("fmtJson").setAttribute("aria-pressed", exportState.format === "json");
+      $("notOklch").setAttribute("aria-pressed", exportState.notation === "oklch");
+      $("notHex").setAttribute("aria-pressed", exportState.notation === "hex");
+      $("darkAttr").setAttribute("aria-pressed", exportState.darkVia === "attr");
+      $("darkMedia").setAttribute("aria-pressed", exportState.darkVia === "media");
+    }
+    function restoreState() {
+      let fromUrl = false;
+      try {
+        const data = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+        if (data) {
+          if (data.palettes) palettes = sanitizePalettes(data.palettes);
+          if (data.mode === "dark" || data.mode === "light") { mode = data.mode; auditView = data.mode; }
+          if (data.step && STEPS.some(s => s.id === data.step)) step = data.step;
+          if (data.exportState) for (const k of ["format", "notation", "darkVia"]) if (data.exportState[k]) exportState[k] = data.exportState[k];
+          if (data.seed) {
+            seedEls.hue.value = clamp(+data.seed.hue || 18, 0, 360);
+            seedEls.sat.value = clamp(+data.seed.sat || 62, 0, 100);
+            seedEls.harmony.value = String(data.seed.harmony ?? 180);
+          }
+        }
+      } catch (e) {}
+      const us = seedFromUrl();
+      if (us) {
+        fromUrl = true;
+        seedEls.hue.value = us.hue; seedEls.sat.value = us.sat; seedEls.harmony.value = String(us.harmony);
+        palettes = generatePalettes(us.hue, us.sat, us.harmony);
+      }
+      $("modeLight").setAttribute("aria-pressed", mode === "light");
+      $("modeDark").setAttribute("aria-pressed", mode === "dark");
+      syncExportSegs();
+      return fromUrl;
+    }
+
     function toast(msg) {
       const t = $("toast"); t.textContent = msg; t.classList.add("show");
       clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 2200);
@@ -816,7 +951,7 @@
         if (s.id === "review") { const st = pairStats(); flag = st.fail ? `<span class="flag">${st.fail} failing</span>` : `<span class="flag ok">all pass</span>`; }
         else if (GROUPS[s.id]) { const f = groupFails(s.id); if (f) flag = `<span class="flag">${f} issue${f > 1 ? "s" : ""}</span>`; }
         b.innerHTML = `<span class="n">${i + 1}</span>${s.title} ${flag}`;
-        b.addEventListener("click", () => { step = s.id; renderEditor(); renderStepper(); });
+        b.addEventListener("click", () => { step = s.id; renderEditor(); renderStepper(); saveState(); });
         nav.appendChild(b);
       });
     }
@@ -978,7 +1113,7 @@
       $("notationSeg").style.display = exportState.format === "json" ? "none" : "";
       $("darkSeg").style.display = exportState.format === "json" ? "none" : "";
     }
-    function refreshDerived() { applyPreview(); renderAudit(); renderExport(); renderStepper(); }
+    function refreshDerived() { applyPreview(); renderAudit(); renderExport(); renderStepper(); saveState(); }
 
     /* ================= wiring ================= */
     function setMode(m) {
@@ -991,20 +1126,43 @@
     $("modeDark").addEventListener("click", () => setMode("dark"));
     $("miniMode").addEventListener("click", () => setMode(mode === "light" ? "dark" : "light"));
     $("miniPreview").addEventListener("click", () => $("previewCard").scrollIntoView({ behavior: "smooth", block: "start" }));
-    $("exportJump").addEventListener("click", () => { step = "review"; renderEditor(); renderStepper(); $("exportCard").scrollIntoView({ behavior: "smooth", block: "start" }); });
+    $("exportJump").addEventListener("click", () => { step = "review"; renderEditor(); renderStepper(); saveState(); $("exportCard").scrollIntoView({ behavior: "smooth", block: "start" }); });
 
     function updateSeedLabels() {
-      $("seedHueVal").textContent = seedEls.hue.value + "°";
-      $("seedSatVal").textContent = seedEls.sat.value + "%";
+      const hueIn = $("seedHueVal"), satIn = $("seedSatVal");
+      if (document.activeElement !== hueIn) hueIn.value = seedEls.hue.value;
+      if (document.activeElement !== satIn) satIn.value = seedEls.sat.value;
       seedEls.sat.style.background = `linear-gradient(90deg, oklch(.6 .01 ${seedEls.hue.value}), oklch(.58 .19 ${seedEls.hue.value}))`;
+      const harmName = seedEls.harmony.selectedOptions[0] ? seedEls.harmony.selectedOptions[0].textContent.split(" — ")[0] : seedEls.harmony.value + "°";
+      $("seedSummary").textContent = `Seed — hue ${seedEls.hue.value}° · intensity ${seedEls.sat.value}% · ${harmName} (${seedEls.harmony.value}°)`;
+      document.querySelectorAll("#presetRow .preset").forEach(b => {
+        const on = +b.dataset.hue === +seedEls.hue.value && +b.dataset.sat === +seedEls.sat.value && +b.dataset.harmony === +seedEls.harmony.value;
+        b.setAttribute("aria-pressed", on);
+      });
+      saveState();
     }
     [seedEls.hue, seedEls.sat].forEach(el => el.addEventListener("input", updateSeedLabels));
+    seedEls.harmony.addEventListener("change", updateSeedLabels);
+    function seedNumWire(inputId, slider, min, max) {
+      const inp = $(inputId);
+      inp.addEventListener("change", () => {
+        const v = parseFloat(inp.value);
+        if (isNaN(v)) { updateSeedLabels(); return; }
+        slider.value = clamp(Math.round(v), min, max);
+        updateSeedLabels();
+      });
+      inp.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } });
+    }
+    seedNumWire("seedHueVal", seedEls.hue, 0, 360);
+    seedNumWire("seedSatVal", seedEls.sat, 0, 100);
     $("generateBtn").addEventListener("click", () => {
+      pushUndo();
       palettes = generatePalettes(+seedEls.hue.value, +seedEls.sat.value, +seedEls.harmony.value);
       renderEditor(); refreshDerived(); renderStepper();
       toast("Palettes generated — every pair starts AA-clean");
     });
     $("deriveDarkBtn").addEventListener("click", () => {
+      pushUndo();
       const inv = {}; for (const k of ALL_KEYS) { const c = palettes.light[k]; inv[k] = { l: clamp(1.04 - c.l, 0.03, 0.97), c: c.c, h: c.h }; }
       palettes.dark = inv;
       if (mode === "dark") renderEditor();
@@ -1012,6 +1170,7 @@
       toast("Dark palette derived from light — check its audit before exporting");
     });
     $("diceBtn").addEventListener("click", () => {
+      pushUndo();
       seedEls.hue.value = Math.floor(Math.random() * 360);
       seedEls.sat.value = 35 + Math.floor(Math.random() * 60);
       seedEls.harmony.value = ["180", "150", "120", "32", "0"][Math.floor(Math.random() * 5)];
@@ -1022,12 +1181,15 @@
     });
     PRESETS.forEach(p => {
       const b = document.createElement("button"); b.className = "preset";
+      b.dataset.hue = p.hue; b.dataset.sat = p.sat; b.dataset.harmony = p.harmony;
+      b.setAttribute("aria-pressed", "false");
       const dots = [0, 1, 2].map(i => {
         const col = i === 1 ? { l: 0.56, c: 0.13, h: (p.hue + p.harmony) % 360 } : i === 2 ? { l: 0.52, c: 0.125, h: 152 } : { l: 0.545, c: 0.05 + (p.sat / 100) * 0.125, h: p.hue };
         return `<i style="background:${oklchCss(col)}"></i>`;
       }).join("");
       b.innerHTML = `<span class="dots">${dots}</span>${p.name}`;
       b.addEventListener("click", () => {
+        pushUndo();
         seedEls.hue.value = p.hue; seedEls.sat.value = p.sat; seedEls.harmony.value = String(p.harmony);
         updateSeedLabels();
         palettes = generatePalettes(p.hue, p.sat, p.harmony);
@@ -1048,7 +1210,7 @@
     $("fixAllBtn").addEventListener("click", fixAll);
     $("fixAllBtn2").addEventListener("click", fixAll);
 
-    function segWire(btnId, fn) { $(btnId).addEventListener("click", () => { fn(); renderExport(); }); }
+    function segWire(btnId, fn) { $(btnId).addEventListener("click", () => { fn(); renderExport(); saveState(); }); }
     segWire("fmtCss", () => { exportState.format = "css"; $("fmtCss").setAttribute("aria-pressed", "true"); $("fmtJson").setAttribute("aria-pressed", "false"); });
     segWire("fmtJson", () => { exportState.format = "json"; $("fmtJson").setAttribute("aria-pressed", "true"); $("fmtCss").setAttribute("aria-pressed", "false"); });
     segWire("notOklch", () => { exportState.notation = "oklch"; $("notOklch").setAttribute("aria-pressed", "true"); $("notHex").setAttribute("aria-pressed", "false"); });
@@ -1075,12 +1237,47 @@
       toast("Downloaded " + a.download);
     });
 
+    /* ================= session controls ================= */
+    $("undoBtn").addEventListener("click", undo);
+    $("redoBtn").addEventListener("click", redo);
+    $("resetBtn").addEventListener("click", () => {
+      pushUndo();
+      try { localStorage.removeItem(STORE_KEY); } catch (e) {}
+      seedEls.hue.value = 18; seedEls.sat.value = 62; seedEls.harmony.value = "180";
+      palettes = generatePalettes(18, 62, 180);
+      mode = "light"; step = "seed"; auditView = "light";
+      $("modeLight").setAttribute("aria-pressed", "true");
+      $("modeDark").setAttribute("aria-pressed", "false");
+      updateSeedLabels(); renderEditor(); refreshDerived(); renderStepper();
+      toast("Reset to the default palettes — Ctrl+Z brings your work back");
+    });
+    $("copySeedLinkBtn").addEventListener("click", async () => {
+      const s = currentSeed();
+      const u = new URL(location.href);
+      u.searchParams.set("seed", s.hue + "," + s.sat + "," + s.harmony);
+      try { await navigator.clipboard.writeText(u.toString()); toast("Seed link copied — opening it recreates this seed"); }
+      catch (e) { toast("Seed: hue " + s.hue + "° · intensity " + s.sat + "% · harmony " + s.harmony + "°"); }
+    });
+    document.addEventListener("keydown", e => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      const k = e.key.toLowerCase();
+      if (k !== "z" && k !== "y") return;
+      const t = e.target;
+      /* leave native text undo alone inside text fields; their palette commits are covered by the gesture history */
+      if (t && (t.tagName === "TEXTAREA" || t.isContentEditable || (t.tagName === "INPUT" && ["text", "search", "url", "tel", "password"].includes(t.type)))) return;
+      e.preventDefault();
+      if (k === "y" || e.shiftKey) redo(); else undo();
+    });
+
     /* ================= init ================= */
     $("preview").innerHTML = buildPreview();
+    const loadedFromLink = restoreState();
     updateSeedLabels();
     renderStepper();
     renderEditor();
     refreshDerived();
+    updateUndoUI();
+    if (loadedFromLink) toast("Loaded the shared seed — palettes generated from it");
     </script>
 </body>
 </html>
