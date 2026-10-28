@@ -305,6 +305,21 @@
       input.numin-seed:hover{border-color:var(--chrome-line2)}
       input.numin-seed:focus{border-color:var(--chrome-acc);background:var(--chrome-panel);outline:none}
       .preset[aria-pressed="true"]{border-color:var(--chrome-acc);box-shadow:inset 0 0 0 1px var(--chrome-acc)}
+
+      /* ---------- additions: exact value entry in token rows ---------- */
+      input.numin{
+        background:transparent;border:1px solid transparent;border-radius:6px;
+        padding:2px 3px;width:100%;min-width:0;
+      }
+      input.numin:hover{border-color:var(--chrome-line2)}
+      input.numin:focus{border-color:var(--chrome-acc);background:var(--chrome-panel);color:var(--chrome-ink);outline:none}
+      .oklchin{
+        width:100%;margin-top:8px;font-size:12px;padding:6px 8px;
+        border:1px solid var(--chrome-line2);border-radius:8px;background:var(--chrome-panel);color:var(--chrome-ink);
+      }
+      .oklchin.invalid{border-color:var(--chrome-bad);color:var(--chrome-bad)}
+      .field-err{font-size:11.5px;color:var(--chrome-bad);font-weight:600;display:none;margin-top:6px}
+      .field-err.show{display:block}
     </style>
   </head>
   <body>
@@ -963,6 +978,14 @@
       if (kind === "c") return `linear-gradient(90deg, ${g(col.l, 0, col.h)}, ${g(col.l, 0.37, col.h)})`;
       return "linear-gradient(90deg,oklch(.62 .17 0),oklch(.62 .17 60),oklch(.62 .17 120),oklch(.62 .17 180),oklch(.62 .17 240),oklch(.62 .17 300),oklch(.62 .17 360))";
     }
+    function parseOklchText(text) {
+      const m = /^\s*oklch\(\s*([\d.]+)(%?)\s+([\d.]+)\s+(-?[\d.]+)(?:deg)?\s*\)\s*$/i.exec(text);
+      if (!m) return null;
+      let l = parseFloat(m[1]); if (m[2] === "%") l = l / 100;
+      const c = parseFloat(m[3]), h = parseFloat(m[4]);
+      if ([l, c, h].some(isNaN)) return null;
+      return { l: clamp(l, 0, 1), c: clamp(c, 0, 0.4), h: ((h % 360) + 360) % 360 };
+    }
     function buildTokenRow(key) {
       const def = TOKEN_DEFS[key];
       const row = document.createElement("div");
@@ -976,34 +999,102 @@
             <div class="token-desc">${def.desc}</div>
           </div>
           <input class="hexin mono" spellcheck="false" aria-label="${def.name} hex value">
+          <button class="btn small token-reset" type="button" title="Reset ${def.name} to the value generated from the current seed">Reset</button>
         </div>
         <div class="sliders">
           ${["l", "c", "h"].map(ch => `
           <div class="slider-row">
             <span class="lab">${ch.toUpperCase()}</span>
             <input type="range" class="tok" data-ch="${ch}" min="0" max="${ch === "l" ? 1000 : ch === "c" ? 370 : 360}" step="1" aria-label="${def.name} ${ch === "l" ? "lightness" : ch === "c" ? "chroma" : "hue"}">
-            <span class="val mono" data-val="${ch}"></span>
+            <input class="val mono numin" data-val="${ch}" inputmode="decimal" aria-label="${def.name} ${ch === "l" ? "lightness" : ch === "c" ? "chroma" : "hue"} — type an exact value">
           </div>`).join("")}
+          <input class="oklchin mono" spellcheck="false" placeholder="oklch(0.650 0.150 25.0)" aria-label="${def.name} OKLCH value — paste an oklch() color to set it exactly, including colors outside the sRGB gamut">
+          <div class="field-err" role="alert"></div>
           <div class="gamut-note">Outside the sRGB gamut — displayed and exported with chroma reduced to the closest displayable color.</div>
         </div>`;
       const col = () => palettes[mode][key];
-      row.querySelector('input[type="color"]').addEventListener("input", e => {
+      const errEl = row.querySelector(".field-err");
+      const showErr = msg => { errEl.textContent = msg || ""; errEl.classList.toggle("show", !!msg); };
+      const colorIn = row.querySelector('input[type="color"]');
+      colorIn.addEventListener("pointerdown", gestureBegin);
+      colorIn.addEventListener("focus", gestureBegin);
+      colorIn.addEventListener("change", gestureEnd);
+      colorIn.addEventListener("input", e => {
         const rgb = hexToRgb255(e.target.value); if (!rgb) return;
         palettes[mode][key] = rgb255ToOklch(rgb); syncRow(row, key); refreshDerived();
       });
       const hexIn = row.querySelector(".hexin");
+      hexIn.addEventListener("focus", gestureBegin);
+      hexIn.addEventListener("blur", gestureEnd);
+      hexIn.addEventListener("input", () => {
+        const raw = hexIn.value.trim(), digits = raw.replace(/^#/, "");
+        const rgb = hexToRgb255(raw);
+        if (rgb && digits.length === 6) {
+          /* complete hex commits live; a 3-digit shorthand still commits on blur/Enter so mid-typing states don't hijack the token */
+          hexIn.classList.remove("invalid"); showErr("");
+          palettes[mode][key] = rgb255ToOklch(rgb); syncRow(row, key); refreshDerived();
+        } else if (/[^0-9a-fA-F#]/.test(raw) || digits.length > 6) {
+          hexIn.classList.add("invalid");
+          showErr("Not a valid hex color — use #RGB or #RRGGBB.");
+        } else { hexIn.classList.remove("invalid"); showErr(""); }
+      });
       hexIn.addEventListener("change", () => {
         const rgb = hexToRgb255(hexIn.value);
-        if (!rgb) { hexIn.classList.add("invalid"); return; }
-        hexIn.classList.remove("invalid");
-        palettes[mode][key] = rgb255ToOklch(rgb); syncRow(row, key); refreshDerived();
+        if (!rgb) { hexIn.classList.add("invalid"); showErr("That is not a valid hex color — use #RGB or #RRGGBB. The token was not changed."); }
+        else { hexIn.classList.remove("invalid"); showErr(""); palettes[mode][key] = rgb255ToOklch(rgb); syncRow(row, key); refreshDerived(); }
+        gestureEnd();
       });
-      hexIn.addEventListener("input", () => hexIn.classList.remove("invalid"));
+      const okIn = row.querySelector(".oklchin");
+      okIn.addEventListener("focus", gestureBegin);
+      okIn.addEventListener("blur", gestureEnd);
+      okIn.addEventListener("input", () => { okIn.classList.remove("invalid"); });
+      okIn.addEventListener("change", () => {
+        const parsed = parseOklchText(okIn.value);
+        if (!parsed) { okIn.classList.add("invalid"); showErr("Could not parse that — expected a form like oklch(0.650 0.150 25.0). The token was not changed."); }
+        else { okIn.classList.remove("invalid"); showErr(""); palettes[mode][key] = parsed; syncRow(row, key); refreshDerived(); }
+        gestureEnd();
+      });
+      row.querySelector(".token-reset").addEventListener("click", () => {
+        pushUndo();
+        const fresh = generatePalettes(currentSeed().hue, currentSeed().sat, currentSeed().harmony)[mode][key];
+        palettes[mode][key] = { ...fresh };
+        syncRow(row, key); refreshDerived();
+        toast("Reset " + def.name + " to the generated value");
+      });
       row.querySelectorAll('input[type="range"]').forEach(sl => {
+        sl.addEventListener("pointerdown", gestureBegin);
+        sl.addEventListener("focus", gestureBegin);
+        sl.addEventListener("change", gestureEnd);
         sl.addEventListener("input", () => {
           const ch = sl.dataset.ch, v = parseFloat(sl.value);
           if (ch === "l") col().l = v / 1000; else if (ch === "c") col().c = v / 1000; else col().h = v;
           syncRow(row, key, ch); refreshDerived();
+        });
+      });
+      row.querySelectorAll(".numin").forEach(inp => {
+        const ch = inp.dataset.val;
+        function commitNum() {
+          const v = parseFloat(inp.value);
+          if (isNaN(v)) { syncRow(row, key); return; }
+          if (ch === "l") col().l = clamp(v > 1 ? v / 100 : v, 0, 1);
+          else if (ch === "c") col().c = clamp(v, 0, 0.4);
+          else col().h = ((v % 360) + 360) % 360;
+          syncRow(row, key); refreshDerived();
+        }
+        inp.addEventListener("focus", gestureBegin);
+        inp.addEventListener("blur", gestureEnd);
+        inp.addEventListener("change", commitNum);
+        inp.addEventListener("change", gestureEnd);
+        inp.addEventListener("keydown", e => {
+          if (e.key === "Enter") { e.preventDefault(); inp.blur(); }
+          else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+            e.preventDefault();
+            const stepBy = (ch === "h" ? 1 : 0.005) * (e.shiftKey ? 10 : 1) * (e.key === "ArrowUp" ? 1 : -1);
+            if (ch === "l") col().l = clamp(col().l + stepBy, 0, 1);
+            else if (ch === "c") col().c = clamp(col().c + stepBy, 0, 0.4);
+            else col().h = ((col().h + stepBy) % 360 + 360) % 360;
+            syncRow(row, key); refreshDerived();
+          }
         });
       });
       row.addEventListener("mouseenter", () => setHighlight(key, true));
@@ -1023,9 +1114,13 @@
         sl.value = ch === "l" ? Math.round(col.l * 1000) : ch === "c" ? Math.round(col.c * 1000) : Math.round(col.h);
         sl.style.background = trackGradient(ch, col);
       });
-      row.querySelector('[data-val="l"]').textContent = col.l.toFixed(3);
-      row.querySelector('[data-val="c"]').textContent = col.c.toFixed(3);
-      row.querySelector('[data-val="h"]').textContent = Math.round(col.h) + "°";
+      row.querySelectorAll(".numin").forEach(inp => {
+        if (document.activeElement === inp) return;
+        const ch = inp.dataset.val;
+        inp.value = ch === "l" ? col.l.toFixed(3) : ch === "c" ? col.c.toFixed(3) : String(Math.round(col.h));
+      });
+      const okIn = row.querySelector(".oklchin");
+      if (document.activeElement !== okIn) okIn.value = `oklch(${col.l.toFixed(3)} ${col.c.toFixed(3)} ${col.h.toFixed(1)})`;
       row.querySelector(".gamut-note").classList.toggle("show", Math.abs(displayCol(col).c - col.c) > 0.01);
     }
     function renderEditor() {
