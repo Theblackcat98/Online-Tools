@@ -874,8 +874,10 @@
     /* ================= persistence + undo =================
        State (palettes, seed, mode, step, export options) autosaves to
        localStorage on every change and is restored on load. A shareable
-       ?seed=hue,sat,harmony URL parameter recreates a seed from scratch
-       and takes precedence over the saved state. Undo is a snapshot stack
+       ?seed=hue,sat,harmony URL parameter recreates a seed from scratch —
+       but only when it differs from the saved session's seed, so the
+       ?seed= that saveState keeps in the URL never wipes edits on reload.
+       Undo is a snapshot stack
        of {palettes, seed}; discrete actions push before mutating, and
        continuous controls (sliders, color picker, text fields) capture a
        snapshot when a gesture/focus session begins and push it when the
@@ -960,9 +962,9 @@
       $("darkMedia").setAttribute("aria-pressed", exportState.darkVia === "media");
     }
     function restoreState() {
-      let fromUrl = false;
+      let fromUrl = false, data = null;
       try {
-        const data = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+        data = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
         if (data) {
           if (data.palettes) palettes = sanitizePalettes(data.palettes);
           if (data.mode === "dark" || data.mode === "light") { mode = data.mode; auditView = data.mode; }
@@ -977,9 +979,17 @@
       } catch (e) {}
       const us = seedFromUrl();
       if (us) {
-        fromUrl = true;
-        seedEls.hue.value = us.hue; seedEls.sat.value = us.sat; seedEls.harmony.value = String(us.harmony);
-        palettes = generatePalettes(us.hue, us.sat, us.harmony);
+        /* A seed link only (re)generates when it brings a DIFFERENT seed
+           than the saved session. saveState keeps ?seed= in the URL, so a
+           plain reload also carries the parameter — with an equal seed it
+           is the same session continuing, and the saved palettes win. */
+        const savedSeed = data && data.seed;
+        const sameSeed = savedSeed && +savedSeed.hue === us.hue && +savedSeed.sat === us.sat && +savedSeed.harmony === us.harmony;
+        if (!sameSeed) {
+          fromUrl = true;
+          seedEls.hue.value = us.hue; seedEls.sat.value = us.sat; seedEls.harmony.value = String(us.harmony);
+          palettes = generatePalettes(us.hue, us.sat, us.harmony);
+        }
       }
       $("modeLight").setAttribute("aria-pressed", mode === "light");
       $("modeDark").setAttribute("aria-pressed", mode === "dark");
@@ -1367,10 +1377,18 @@
           /* value, oklch and hex must all describe the SAME color: the
              gamut-mapped display color. (Previously the nested oklch held
              the raw palette values while value/hex were clamped, so one
-             entry contained two different colors.) Out-of-gamut tokens are
-             flagged with gamutClamped instead of silently diverging. */
+             entry contained two different colors.) All three fields are
+             derived from the one rounded triple that is printed in the
+             entry, so they agree exactly — no rounding drift between
+             representations. Out-of-gamut tokens are flagged with
+             gamutClamped instead of silently diverging. */
           const raw = palettes[m][k], d = displayCol(raw);
-          const entry = { value: tokenValue(raw), oklch: { l: +d.l.toFixed(3), c: +d.c.toFixed(3), h: +d.h.toFixed(1) }, hex: oklchToHex(d) };
+          const triple = { l: +d.l.toFixed(3), c: +d.c.toFixed(3), h: +d.h.toFixed(1) };
+          const entry = {
+            value: exportState.notation === "oklch" ? `oklch(${triple.l.toFixed(3)} ${triple.c.toFixed(3)} ${triple.h.toFixed(1)})` : oklchToHex(triple),
+            oklch: triple,
+            hex: oklchToHex(triple)
+          };
           if (Math.abs(d.c - raw.c) > 0.001) entry.gamutClamped = true;
           obj[m][k] = entry;
         }
