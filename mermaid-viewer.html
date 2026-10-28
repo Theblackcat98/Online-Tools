@@ -2436,7 +2436,7 @@ Grid, Loss, 30` },
       var bootHash = location.hash;
       if (bootHash.length > 3 && (bootHash.indexOf("#c=") === 0 || bootHash.indexOf("#p=") === 0)) {
         decodeShare(bootHash.slice(1)).then(function (code) {
-          if (code && code.trim()) { startWith(code, true); return; }
+          if (code && code.trim()) { startWith(code, false); return; }
           var d = draftOrSample();
           startWith(d.code, d.pristine);
           toast("Couldn't read the diagram in that link — loaded your draft instead");
