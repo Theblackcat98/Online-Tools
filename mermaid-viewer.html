@@ -201,6 +201,40 @@
         border-top: 1px solid var(--line);
         margin-top: 4px;
       }
+      .menu-warn {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--err-ink);
+        background: var(--err-bg);
+        border: 1px solid var(--err-line);
+        border-radius: 8px;
+        padding: 7px 10px;
+        margin: 2px 2px 6px;
+      }
+      .menu-warn[hidden] { display: none; }
+      .menu-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 6px 10px;
+      }
+      .menu-row-label { font-size: 13.5px; font-weight: 500; }
+      .menu .seg { display: inline-flex; background: var(--chip); border: 1px solid var(--line); border-radius: 999px; padding: 2px; gap: 2px; }
+      .menu .seg button {
+        width: auto;
+        border: 0;
+        background: transparent;
+        border-radius: 999px;
+        padding: 3px 10px;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--mut);
+        display: inline-flex;
+      }
+      .menu .seg button:hover { background: transparent; }
+      .menu .seg button.on { background: var(--panel2); color: var(--ink); box-shadow: 0 1px 3px rgba(20, 24, 34, .14); }
+      .menu-check { width: 15px; flex: none; color: var(--acc); font-weight: 700; text-align: center; }
 
       /* ---------- layout ---------- */
       main {
@@ -625,6 +659,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="width:12px;height:12px"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
         <div class="menu" id="export-menu" role="menu">
+          <div class="menu-warn" id="menu-warn" hidden>Your current code hasn't rendered — these exports are the last good diagram, not your latest code.</div>
           <button type="button" id="dl-svg" role="menuitem">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Download SVG
@@ -632,6 +667,22 @@
           <button type="button" id="dl-png" role="menuitem">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
             Download PNG
+          </button>
+          <button type="button" id="copy-png" role="menuitem">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy PNG image
+          </button>
+          <div class="menu-row">
+            <span class="menu-row-label">PNG scale</span>
+            <span class="seg" id="png-scale-seg" role="group" aria-label="PNG export scale">
+              <button type="button" data-scale="1">1×</button>
+              <button type="button" data-scale="2">2×</button>
+              <button type="button" data-scale="3">3×</button>
+            </span>
+          </div>
+          <button type="button" id="png-bg-toggle" role="menuitem" aria-pressed="false">
+            <span class="menu-check" id="png-bg-check"></span>
+            Transparent PNG background
           </button>
           <button type="button" id="dl-mmd" role="menuitem">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
@@ -641,7 +692,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
             Copy SVG markup
           </button>
-          <div class="menu-note">PNG exports at 3× resolution.</div>
+          <div class="menu-note" id="menu-note">PNG exports at 3× resolution.</div>
         </div>
       </div>
 
@@ -1872,6 +1923,70 @@ Grid, Loss, 30` },
         if (!state.lastSvg) { toast("Nothing rendered yet — fix the code first"); return false; }
         return true;
       }
+      function isStale() {
+        return !!state.lastSvg && editor.value !== state.renderedCode;
+      }
+      function guardExport() {
+        if (!needDiagram()) return Promise.resolve(false);
+        if (isStale()) {
+          return confirmDialog(
+            "Export the last good diagram?",
+            "Your current code hasn't rendered successfully, so this export will be the previous diagram — not your latest code.",
+            "Export anyway"
+          );
+        }
+        return Promise.resolve(true);
+      }
+      function pngBlob(callback) {
+        var xml = sizedSvgString();
+        var url = URL.createObjectURL(new Blob([xml], { type: "image/svg+xml;charset=utf-8" }));
+        var img = new Image();
+        img.onload = function () {
+          var factor = prefs.pngScale || 3;
+          var c = document.createElement("canvas");
+          c.width = Math.max(1, Math.round(state.natW * factor));
+          c.height = Math.max(1, Math.round(state.natH * factor));
+          var ctx = c.getContext("2d");
+          if (!prefs.pngTransparent) {
+            ctx.fillStyle = getComputedStyle(stage).backgroundColor;
+            ctx.fillRect(0, 0, c.width, c.height);
+          }
+          ctx.drawImage(img, 0, 0, c.width, c.height);
+          URL.revokeObjectURL(url);
+          if (c.toBlob) c.toBlob(function (blob) { callback(blob); }, "image/png");
+          else callback(null);
+        };
+        img.onerror = function () { URL.revokeObjectURL(url); callback(null); };
+        img.src = url;
+      }
+
+      var menuWarn = $("menu-warn"), menuNote = $("menu-note");
+      var pngScaleSeg = $("png-scale-seg"), pngBgToggle = $("png-bg-toggle"), pngBgCheck = $("png-bg-check");
+      function syncPngUI() {
+        pngScaleSeg.querySelectorAll("[data-scale]").forEach(function (b) {
+          b.classList.toggle("on", Number(b.getAttribute("data-scale")) === prefs.pngScale);
+        });
+        pngBgToggle.setAttribute("aria-pressed", String(!!prefs.pngTransparent));
+        pngBgCheck.textContent = prefs.pngTransparent ? "✓" : "";
+        menuNote.textContent = "PNG exports at " + prefs.pngScale + "× resolution" +
+          (prefs.pngTransparent ? ", transparent background." : ".");
+      }
+      function refreshMenu() {
+        menuWarn.hidden = !isStale();
+        syncPngUI();
+      }
+      pngScaleSeg.addEventListener("click", function (e) {
+        var b = e.target.closest("[data-scale]");
+        if (!b) return;
+        prefs.pngScale = Number(b.getAttribute("data-scale"));
+        savePrefs();
+        syncPngUI();
+      });
+      pngBgToggle.addEventListener("click", function () {
+        prefs.pngTransparent = !prefs.pngTransparent;
+        savePrefs();
+        syncPngUI();
+      });
 
       $("copy-code-btn").addEventListener("click", function () {
         if (!editor.value) { toast("Editor is empty"); return; }
@@ -1879,6 +1994,7 @@ Grid, Loss, 30` },
       });
       exportBtn.addEventListener("click", function (e) {
         e.stopPropagation();
+        refreshMenu();
         var open = exportMenu.classList.toggle("open");
         exportBtn.setAttribute("aria-expanded", String(open));
       });
@@ -1892,9 +2008,11 @@ Grid, Loss, 30` },
 
       $("dl-svg").addEventListener("click", function () {
         closeMenu();
-        if (!needDiagram()) return;
-        download("diagram.svg", new Blob([sizedSvgString()], { type: "image/svg+xml;charset=utf-8" }));
-        toast("SVG downloaded");
+        guardExport().then(function (ok) {
+          if (!ok) return;
+          download("diagram.svg", new Blob([sizedSvgString()], { type: "image/svg+xml;charset=utf-8" }));
+          toast("SVG downloaded");
+        });
       });
       $("dl-mmd").addEventListener("click", function () {
         closeMenu();
@@ -1904,34 +2022,41 @@ Grid, Loss, 30` },
       });
       $("copy-svg").addEventListener("click", function () {
         closeMenu();
-        if (!needDiagram()) return;
-        copyText(sizedSvgString(), "SVG markup copied");
+        guardExport().then(function (ok) {
+          if (!ok) return;
+          copyText(sizedSvgString(), "SVG markup copied");
+        });
       });
       $("dl-png").addEventListener("click", function () {
         closeMenu();
-        if (!needDiagram()) return;
-        var xml = sizedSvgString();
-        var url = URL.createObjectURL(new Blob([xml], { type: "image/svg+xml;charset=utf-8" }));
-        var img = new Image();
-        img.onload = function () {
-          var factor = 3;
-          var c = document.createElement("canvas");
-          c.width = Math.max(1, Math.round(state.natW * factor));
-          c.height = Math.max(1, Math.round(state.natH * factor));
-          var ctx = c.getContext("2d");
-          ctx.fillStyle = getComputedStyle(stage).backgroundColor;
-          ctx.fillRect(0, 0, c.width, c.height);
-          ctx.drawImage(img, 0, 0, c.width, c.height);
-          URL.revokeObjectURL(url);
-          if (c.toBlob) {
-            c.toBlob(function (blob) {
-              if (blob) { download("diagram.png", blob); toast("PNG downloaded"); }
-              else toast("PNG export failed");
-            }, "image/png");
-          } else toast("PNG export isn't supported here");
-        };
-        img.onerror = function () { URL.revokeObjectURL(url); toast("PNG export failed"); };
-        img.src = url;
+        guardExport().then(function (ok) {
+          if (!ok) return;
+          pngBlob(function (blob) {
+            if (blob) { download("diagram.png", blob); toast("PNG downloaded"); }
+            else toast("PNG export failed");
+          });
+        });
+      });
+      $("copy-png").addEventListener("click", function () {
+        closeMenu();
+        guardExport().then(function (ok) {
+          if (!ok) return;
+          if (!(navigator.clipboard && window.ClipboardItem)) {
+            toast("Copy PNG isn't supported in this browser");
+            return;
+          }
+          pngBlob(function (blob) {
+            if (!blob) { toast("PNG export failed"); return; }
+            try {
+              var item = {};
+              item["image/png"] = blob;
+              navigator.clipboard.write([new ClipboardItem(item)]).then(
+                function () { toast("PNG copied"); },
+                function () { toast("Copy PNG failed"); }
+              );
+            } catch (e) { toast("Copy PNG isn't supported in this browser"); }
+          });
+        });
       });
 
       /* ---------------- boot ---------------- */
