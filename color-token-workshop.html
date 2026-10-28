@@ -321,6 +321,26 @@
       .field-err{font-size:11.5px;color:var(--chrome-bad);font-weight:600;display:none;margin-top:6px}
       .field-err.show{display:block}
       #fixLog{margin:6px 0 0;padding-left:18px;color:var(--chrome-mut);font-size:12.5px;display:grid;gap:3px}
+
+      /* ---------- additions: step nav / compare strip / both-mode stats ---------- */
+      .step-nav{display:flex;justify-content:space-between;gap:10px;margin-top:16px}
+      .step-nav .spacer{flex:1}
+      .compare-strip{display:grid;gap:6px;margin-bottom:12px}
+      .cmp-row{
+        display:flex;align-items:center;gap:7px;width:100%;text-align:left;
+        border:1px solid var(--chrome-line);border-radius:10px;background:var(--chrome-panel2);
+        padding:6px 10px;color:var(--chrome-ink);
+      }
+      .cmp-row[aria-pressed="true"]{border-color:var(--chrome-acc)}
+      .cmp-mode{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--chrome-mut);width:44px;flex:none}
+      .cmp-sw{width:20px;height:20px;border-radius:6px;border:1px solid var(--chrome-line2);flex:none}
+      .cmp-edit{margin-left:auto;font-size:11px;font-weight:700;color:var(--chrome-faint);flex:none}
+      .cmp-row[aria-pressed="true"] .cmp-edit{color:var(--chrome-acc)}
+      .bm-row{display:flex;align-items:center;gap:10px;border:1px solid var(--chrome-line);border-radius:10px;background:var(--chrome-panel2);padding:9px 12px;margin-top:8px;font-size:13px}
+      .bm-row .grow{flex:1;min-width:0}
+      @media (max-width:1020px){
+        .stepper{position:sticky;top:var(--topbar-h,57px);z-index:35;background:var(--chrome-bg);padding-bottom:8px}
+      }
     </style>
   </head>
   <body>
@@ -398,11 +418,13 @@
 
           <!-- review panel -->
           <div id="reviewPanel" hidden>
+            <p class="guidance" id="statModeLbl" style="margin:0 0 8px"></p>
             <div class="stat-row">
               <div class="stat"><div class="big" id="statAA">–</div><div class="lbl">pairs pass WCAG AA</div></div>
               <div class="stat"><div class="big" id="statAAA">–</div><div class="lbl">pairs pass WCAG AAA</div></div>
               <div class="stat"><div class="big" id="statFix">–</div><div class="lbl">pairs need a fix</div></div>
             </div>
+            <div id="bothModes"></div>
             <p class="guidance" style="margin-top:12px">The audit on the right checks the palette you are editing (light or dark) pair by pair. <strong>Fix</strong> adjusts OKLCH lightness only — hue and chroma stay yours. It moves the foreground first; if that would break a sibling pair (button text must pass on the hover fill too), it moves the fill instead. When everything passes, export the tokens below the audit.</p>
             <div class="seed-actions" style="margin-top:12px">
               <button class="btn" id="fixAllBtn">Fix all failing pairs</button>
@@ -411,6 +433,13 @@
               <p class="guidance" style="margin:14px 0 0"><strong>Recent fixes</strong> — what actually moved, and whether it worked.</p>
               <ul id="fixLog"></ul>
             </div>
+          </div>
+
+          <!-- step navigation -->
+          <div class="step-nav">
+            <button class="btn" id="prevStepBtn" type="button"></button>
+            <span class="spacer"></span>
+            <button class="btn primary" id="nextStepBtn" type="button"></button>
           </div>
         </div>
       </section>
@@ -425,6 +454,7 @@
             <span class="guidance" style="margin:0">Hover a token to spotlight where it is used.</span>
           </div>
           <div class="card-body">
+            <div class="compare-strip" id="compareStrip" aria-label="Key colors of both palettes — activate a row to edit that palette"></div>
             <div class="preview-frame" id="previewFrame">
               <div class="preview-chrome">
                 <span class="dot" style="background:#e0654a" aria-hidden="true"></span>
@@ -443,6 +473,10 @@
             <h2 class="card-title">Contrast audit</h2>
             <span class="guidance" style="margin:0" id="auditModeLabel"></span>
             <span style="flex:1"></span>
+            <div class="seg" role="group" aria-label="Palette shown in the audit">
+              <button id="auditLight" aria-pressed="true">Light</button>
+              <button id="auditDark" aria-pressed="false">Dark</button>
+            </div>
             <button class="btn small" id="fixAllBtn2">Fix all</button>
           </div>
           <div class="card-body">
@@ -949,16 +983,16 @@
     }
 
     /* ================= stepper ================= */
-    function pairStats() {
-      const pal = palettes[mode]; let aa = 0, aaa = 0;
+    function pairStats(m = mode) {
+      const pal = palettes[m]; let aa = 0, aaa = 0;
       for (const p of PAIRS) {
         const r = wcagRatio(oklchToRgb255(pal[p.fg]), oklchToRgb255(pal[p.bg]));
         if (r >= p.min) aa++; if (r >= p.aaa) aaa++;
       }
       return { aa, aaa, fail: PAIRS.length - aa, total: PAIRS.length };
     }
-    function groupFails(groupId) {
-      const pal = palettes[mode], keys = new Set(GROUPS[groupId].tokens); let n = 0;
+    function groupFails(groupId, m = mode) {
+      const pal = palettes[m], keys = new Set(GROUPS[groupId].tokens); let n = 0;
       for (const p of PAIRS) if ((keys.has(p.fg) || keys.has(p.bg)) && wcagRatio(oklchToRgb255(pal[p.fg]), oklchToRgb255(pal[p.bg])) < p.min) n++;
       return n;
     }
@@ -968,7 +1002,10 @@
         const b = document.createElement("button");
         b.className = "step"; b.setAttribute("aria-current", step === s.id ? "step" : "false");
         let flag = "";
-        if (s.id === "review") { const st = pairStats(); flag = st.fail ? `<span class="flag">${st.fail} failing</span>` : `<span class="flag ok">all pass</span>`; }
+        if (s.id === "review") {
+          const lf = pairStats("light").fail, df = pairStats("dark").fail;
+          flag = (lf + df) === 0 ? `<span class="flag ok">all pass</span>` : `<span class="flag">${[lf ? "Light " + lf : "", df ? "Dark " + df : ""].filter(Boolean).join(" · ")} failing</span>`;
+        }
         else if (GROUPS[s.id]) { const f = groupFails(s.id); if (f) flag = `<span class="flag">${f} issue${f > 1 ? "s" : ""}</span>`; }
         b.innerHTML = `<span class="n">${i + 1}</span>${s.title} ${flag}`;
         b.addEventListener("click", () => { step = s.id; renderEditor(); renderStepper(); saveState(); });
@@ -1138,7 +1175,47 @@
       panel.hidden = !(step in GROUPS);
       panel.innerHTML = "";
       if (step in GROUPS) for (const key of GROUPS[step].tokens) { const r = buildTokenRow(key); panel.appendChild(r); syncRow(r, key); }
-      if (step === "review") { const st = pairStats(); $("statAA").textContent = st.aa + "/" + st.total; $("statAAA").textContent = st.aaa + "/" + st.total; $("statFix").textContent = st.fail; }
+      if (step === "review") {
+        const st = pairStats();
+        $("statAA").textContent = st.aa + "/" + st.total; $("statAAA").textContent = st.aaa + "/" + st.total; $("statFix").textContent = st.fail;
+        $("statModeLbl").innerHTML = `The stats above are for the <strong>${mode}</strong> palette you are editing. The export always ships <strong>both</strong> palettes — so here is the other one too:`;
+        const bm = $("bothModes"); bm.innerHTML = "";
+        for (const m of ["light", "dark"]) {
+          const s2 = pairStats(m);
+          const row = document.createElement("div"); row.className = "bm-row";
+          row.innerHTML = `<span class="grow"><strong>${m === "light" ? "Light" : "Dark"} palette</strong> · ${s2.aa}/${s2.total} pass AA · ${s2.aaa}/${s2.total} AAA${s2.fail ? ` · <span style="color:var(--chrome-bad);font-weight:700">${s2.fail} failing</span>` : ` · <span style="color:var(--chrome-good);font-weight:700">all pass</span>`}</span>`;
+          if (m !== mode) {
+            const b = document.createElement("button"); b.className = "btn small"; b.textContent = "Edit " + m;
+            b.addEventListener("click", () => setMode(m));
+            row.appendChild(b);
+          } else {
+            const tag = document.createElement("span"); tag.className = "cmp-edit"; tag.textContent = "editing";
+            row.appendChild(tag);
+          }
+          bm.appendChild(row);
+        }
+      }
+      updateStepNav();
+    }
+    function updateStepNav() {
+      const idx = STEPS.findIndex(x => x.id === step);
+      const prev = STEPS[idx - 1], next = STEPS[idx + 1];
+      const pb = $("prevStepBtn"), nb = $("nextStepBtn");
+      pb.style.visibility = prev ? "visible" : "hidden";
+      nb.style.visibility = next ? "visible" : "hidden";
+      if (prev) pb.textContent = "← " + prev.title;
+      if (next) {
+        let extra = "";
+        if (GROUPS[next.id]) { const f = groupFails(next.id); if (f) extra = ` · ${f} issue${f > 1 ? "s" : ""}`; }
+        if (next.id === "review") { const f = pairStats("light").fail + pairStats("dark").fail; if (f) extra = ` · ${f} failing`; }
+        nb.textContent = next.title + extra + " →";
+      }
+    }
+    function gotoStep(d) {
+      const idx = STEPS.findIndex(x => x.id === step);
+      const t = STEPS[idx + d]; if (!t) return;
+      step = t.id; renderEditor(); renderStepper(); saveState();
+      document.querySelector('section[aria-label="Token editor"]').scrollIntoView({ behavior: "smooth", block: "start" });
     }
     function setHighlight(key, on) {
       document.querySelectorAll("#preview [data-tok]").forEach(el => {
@@ -1154,12 +1231,30 @@
         for (const k of ALL_KEYS) host.style.setProperty("--pv-" + kebab(k), oklchCss(pal[k]));
       const label = (mode === "light" ? "Light" : "Dark") + " palette";
       $("previewModeLabel").textContent = "· showing the " + label.toLowerCase();
-      $("auditModeLabel").textContent = "· " + label;
       $("pvModePill").textContent = mode.toUpperCase() + " PALETTE";
       $("miniMode").textContent = mode.toUpperCase() + " PALETTE";
     }
+    function renderCompare() {
+      const host = $("compareStrip"); if (!host) return;
+      host.innerHTML = "";
+      for (const m of ["light", "dark"]) {
+        const row = document.createElement("button");
+        row.type = "button"; row.className = "cmp-row";
+        row.setAttribute("aria-pressed", m === mode);
+        row.setAttribute("aria-label", (m === "light" ? "Light" : "Dark") + " palette key colors" + (m === mode ? " — being edited" : " — activate to edit it"));
+        row.innerHTML = `<span class="cmp-mode">${m === "light" ? "Light" : "Dark"}</span>` +
+          ["bg", "surface", "text", "primary", "accent"].map(k => `<span class="cmp-sw" style="background:${oklchCss(palettes[m][k])}" title="${TOKEN_DEFS[k].name}"></span>`).join("") +
+          `<span class="cmp-edit">${m === mode ? "editing" : "tap to edit"}</span>`;
+        row.addEventListener("click", () => setMode(m));
+        host.appendChild(row);
+      }
+    }
     function renderAudit() {
-      const pal = palettes[mode], table = $("auditTable"); table.innerHTML = "";
+      const vm = auditMode();
+      const pal = palettes[vm], table = $("auditTable"); table.innerHTML = "";
+      $("auditModeLabel").textContent = "· " + (vm === "light" ? "Light" : "Dark") + " palette" + (vm !== mode ? " (viewing — Fix edits this palette)" : "");
+      $("auditLight").setAttribute("aria-pressed", vm === "light");
+      $("auditDark").setAttribute("aria-pressed", vm === "dark");
       PAIRS.forEach((p, i) => {
         const fgC = pal[p.fg], bgC = pal[p.bg];
         const fgRgb = oklchToRgb255(fgC), bgRgb = oklchToRgb255(bgC);
@@ -1272,7 +1367,7 @@
       $("notationSeg").style.display = exportState.format === "json" ? "none" : "";
       $("darkSeg").style.display = exportState.format === "json" ? "none" : "";
     }
-    function refreshDerived() { applyPreview(); renderAudit(); renderExport(); renderStepper(); saveState(); }
+    function refreshDerived() { applyPreview(); renderAudit(); renderExport(); renderStepper(); renderCompare(); saveState(); }
 
     /* ================= wiring ================= */
     function setMode(m) {
@@ -1407,6 +1502,12 @@
     /* ================= session controls ================= */
     $("undoBtn").addEventListener("click", undo);
     $("redoBtn").addEventListener("click", redo);
+    $("auditLight").addEventListener("click", () => { auditView = "light"; renderAudit(); });
+    $("auditDark").addEventListener("click", () => { auditView = "dark"; renderAudit(); });
+    $("prevStepBtn").addEventListener("click", () => gotoStep(-1));
+    $("nextStepBtn").addEventListener("click", () => gotoStep(1));
+    function setTopbarVar() { const tb = document.querySelector(".topbar"); if (tb) document.documentElement.style.setProperty("--topbar-h", tb.offsetHeight + "px"); }
+    window.addEventListener("resize", setTopbarVar);
     $("resetBtn").addEventListener("click", () => {
       pushUndo();
       try { localStorage.removeItem(STORE_KEY); } catch (e) {}
@@ -1440,6 +1541,7 @@
     $("preview").innerHTML = buildPreview();
     const loadedFromLink = restoreState();
     updateSeedLabels();
+    setTopbarVar();
     renderStepper();
     renderEditor();
     refreshDerived();
