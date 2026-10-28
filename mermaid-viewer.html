@@ -399,6 +399,9 @@
         left: 50%;
         bottom: calc(18px + env(safe-area-inset-bottom));
         transform: translate(-50%, 16px);
+        display: flex;
+        align-items: center;
+        gap: 10px;
         background: var(--ink);
         color: var(--bg);
         font-size: 13.5px;
@@ -412,6 +415,42 @@
         z-index: 100;
       }
       .toast.show { opacity: 1; transform: translate(-50%, 0); }
+      .toast-action {
+        background: transparent;
+        border: 1px solid currentColor;
+        color: inherit;
+        border-radius: 999px;
+        padding: 2px 11px;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+        flex: none;
+      }
+      .toast-action:hover { opacity: .8; }
+
+      /* ---------- confirm dialog ---------- */
+      .modal-overlay {
+        position: fixed; inset: 0;
+        background: rgba(10, 12, 16, .48);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        z-index: 120;
+      }
+      .modal-overlay[hidden] { display: none; }
+      .modal-card {
+        background: var(--panel2);
+        border: 1px solid var(--line2);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        max-width: 430px;
+        width: 100%;
+        padding: 18px;
+      }
+      .modal-title { margin: 0 0 6px; font-size: 16.5px; font-weight: 700; }
+      .modal-msg { margin: 0; color: var(--mut); font-size: 14px; }
+      .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
 
       /* ---------- gallery overlay (Every Mermaid diagram) ---------- */
       .gallery-overlay {
@@ -652,6 +691,17 @@
       <div class="gallery-scroll" id="gallery-scroll">
         <div class="gallery-grid" id="gallery-grid"></div>
         <div class="gallery-empty" id="gallery-empty"><strong>No matching diagrams</strong><br />Try a different term or choose another category.</div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="confirm-overlay" hidden>
+      <div class="modal-card" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-msg">
+        <h2 class="modal-title" id="confirm-title">Replace current code?</h2>
+        <p class="modal-msg" id="confirm-msg"></p>
+        <div class="modal-actions">
+          <button class="btn" id="confirm-cancel" type="button">Cancel</button>
+          <button class="btn primary" id="confirm-ok" type="button">Replace</button>
+        </div>
       </div>
     </div>
 
@@ -1155,24 +1205,105 @@ Grid, Loss, 30` },
       var tabCode = $("tab-code"), tabPreview = $("tab-preview");
       var exportMenu = $("export-menu"), exportBtn = $("export-btn");
       var toastEl = $("toast");
+      var confirmOverlay = $("confirm-overlay");
+
+      /* ---------------- persistence ---------------- */
+      var PREFS_KEY = "mermaid-viewer:prefs:v1";
+      var DRAFT_KEY = "mermaid-viewer:draft:v1";
+      var store = {
+        get: function (k) {
+          try { var v = window.localStorage.getItem(k); return v ? JSON.parse(v) : null; }
+          catch (e) { return null; }
+        },
+        set: function (k, v) {
+          try { window.localStorage.setItem(k, JSON.stringify(v)); } catch (e) {}
+        }
+      };
+      var THEME_NAMES = ["default", "neutral", "dark", "forest", "base"];
+      var prefs = Object.assign({
+        theme: "default", autoFit: true, split: null,
+        wrap: false, fontSize: 13, pngScale: 3, pngTransparent: false
+      }, store.get(PREFS_KEY) || {});
+      if (THEME_NAMES.indexOf(prefs.theme) === -1) prefs.theme = "default";
+      function savePrefs() { store.set(PREFS_KEY, prefs); }
 
       var state = {
-        theme: "default",
+        theme: prefs.theme,
         scale: 1, tx: 0, ty: 0,
         natW: 0, natH: 0,
-        autoFit: true,
+        autoFit: prefs.autoFit !== false,
         lastSvg: "",
+        renderedCode: "",
+        pristineCode: null,
+        errorLine: 0,
+        viewTouched: false,
         renderSeq: 0,
         debounce: null
       };
 
+      var draftTimer = null;
+      function persistDraft() {
+        if (draftTimer) clearTimeout(draftTimer);
+        draftTimer = setTimeout(function () {
+          store.set(DRAFT_KEY, {
+            code: editor.value,
+            pristine: editor.value === state.pristineCode
+          });
+        }, 250);
+      }
+
       var toastTimer = null;
-      function toast(msg) {
-        toastEl.textContent = msg;
+      function hideToast() {
+        toastEl.classList.remove("show");
+        if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
+      }
+      function toast(msg, actionLabel, onAction) {
+        toastEl.innerHTML = "";
+        var span = document.createElement("span");
+        span.textContent = msg;
+        toastEl.appendChild(span);
+        if (actionLabel && onAction) {
+          var b = document.createElement("button");
+          b.type = "button";
+          b.className = "toast-action";
+          b.textContent = actionLabel;
+          b.addEventListener("click", function () { hideToast(); onAction(); });
+          toastEl.appendChild(b);
+        }
         toastEl.classList.add("show");
         if (toastTimer) clearTimeout(toastTimer);
-        toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, 2200);
+        toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, actionLabel ? 6000 : 2200);
       }
+
+      /* ---------------- confirm dialog ---------------- */
+      var confirmResolve = null, confirmLastFocus = null;
+      function confirmDialog(title, msg, okLabel) {
+        return new Promise(function (resolve) {
+          confirmResolve = resolve;
+          $("confirm-title").textContent = title;
+          $("confirm-msg").textContent = msg;
+          $("confirm-ok").textContent = okLabel || "Replace";
+          confirmLastFocus = document.activeElement;
+          confirmOverlay.hidden = false;
+          $("confirm-cancel").focus();
+        });
+      }
+      function settleConfirm(v) {
+        if (!confirmResolve) return;
+        var r = confirmResolve;
+        confirmResolve = null;
+        confirmOverlay.hidden = true;
+        if (confirmLastFocus && confirmLastFocus.focus) confirmLastFocus.focus();
+        r(v);
+      }
+      $("confirm-ok").addEventListener("click", function () { settleConfirm(true); });
+      $("confirm-cancel").addEventListener("click", function () { settleConfirm(false); });
+      confirmOverlay.addEventListener("click", function (e) {
+        if (e.target === confirmOverlay) settleConfirm(false);
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && !confirmOverlay.hidden) settleConfirm(false);
+      });
 
       function setStatus(mode, text) {
         statusDot.className = "status-dot" + (mode ? " " + mode : "");
@@ -1328,9 +1459,11 @@ Grid, Loss, 30` },
       var autofitToggle = $("autofit-toggle");
       autofitToggle.addEventListener("click", function () {
         state.autoFit = !state.autoFit;
+        prefs.autoFit = state.autoFit;
+        savePrefs();
         autofitToggle.classList.toggle("on", state.autoFit);
         autofitToggle.setAttribute("aria-pressed", String(state.autoFit));
-        if (state.autoFit) fit();
+        if (state.autoFit) { state.viewTouched = false; fit(); }
       });
       $("fs-btn").addEventListener("click", function () {
         if (document.fullscreenElement) { document.exitFullscreen(); return; }
@@ -1348,19 +1481,62 @@ Grid, Loss, 30` },
       });
 
       /* ---------------- editor ---------------- */
+      function isUserWork() {
+        return editor.value.trim() !== "" && editor.value !== state.pristineCode;
+      }
+      function syncSampleSelect() {
+        for (var i = 0; i < SAMPLES.length; i++) {
+          if (editor.value === SAMPLES[i].code) { exampleSelect.value = String(i); return; }
+        }
+        exampleSelect.value = "-1";
+      }
+      function loadCode(code, pristine, opts) {
+        opts = opts || {};
+        var prev = { code: editor.value, pristine: state.pristineCode };
+        editor.value = code;
+        state.pristineCode = pristine ? code : null;
+        state.viewTouched = false;
+        updateMeta();
+        render();
+        persistDraft();
+        if (opts.msg && prev.code && prev.code !== code) {
+          toast(opts.msg, "Undo", function () {
+            editor.value = prev.code;
+            state.pristineCode = prev.pristine;
+            updateMeta();
+            render();
+            persistDraft();
+            editor.focus();
+          });
+        } else if (opts.msg) {
+          toast(opts.msg);
+        }
+      }
+      function guardReplace(what) {
+        if (!isUserWork()) return Promise.resolve(true);
+        return confirmDialog(
+          "Replace your code?",
+          "Loading " + what + " will replace the code you've been editing — it isn't saved anywhere else.",
+          "Replace"
+        );
+      }
+
       function updateMeta() {
         var v = editor.value;
         var lines = v ? v.split("\n").length : 0;
         docStats.textContent = lines + (lines === 1 ? " line" : " lines") + " · " + v.length + " chars";
         var html = "";
-        for (var i = 1; i <= Math.max(lines, 1); i++) html += "<span>" + i + "</span>";
+        for (var i = 1; i <= Math.max(lines, 1); i++) {
+          html += "<span" + (i === state.errorLine ? ' class="err-line"' : "") + ">" + i + "</span>";
+        }
         gutterInner.innerHTML = html;
         gutterInner.style.transform = "translateY(" + (-editor.scrollTop) + "px)";
+        syncSampleSelect();
       }
       editor.addEventListener("scroll", function () {
         gutterInner.style.transform = "translateY(" + (-editor.scrollTop) + "px)";
       });
-      editor.addEventListener("input", function () { updateMeta(); scheduleRender(); });
+      editor.addEventListener("input", function () { updateMeta(); scheduleRender(); persistDraft(); });
       editor.addEventListener("keydown", function (e) {
         if (e.key === "Tab") {
           e.preventDefault();
@@ -1379,9 +1555,17 @@ Grid, Loss, 30` },
         if (window.matchMedia("(max-width: 900px)").matches) showPane("preview");
       });
       $("clear-btn").addEventListener("click", function () {
-        editor.value = "";
-        updateMeta(); render();
-        editor.focus();
+        if (!editor.value) { toast("Editor is already empty"); return; }
+        function clearNow() {
+          loadCode("", true, { msg: "Editor cleared" });
+          editor.focus();
+        }
+        if (isUserWork()) {
+          confirmDialog("Clear your code?", "This clears the code you've been editing — it isn't saved anywhere else.", "Clear")
+            .then(function (ok) { if (ok) clearNow(); else editor.focus(); });
+        } else {
+          clearNow();
+        }
       });
 
       /* ---------------- mobile tabs ---------------- */
@@ -1400,6 +1584,11 @@ Grid, Loss, 30` },
 
       /* ---------------- toolbar ---------------- */
       var exampleSelect = $("example-select");
+      var customOpt = document.createElement("option");
+      customOpt.value = "-1";
+      customOpt.textContent = "Custom / edited";
+      customOpt.disabled = true;
+      exampleSelect.appendChild(customOpt);
       SAMPLES.forEach(function (s, i) {
         var opt = document.createElement("option");
         opt.value = String(i); opt.textContent = s.name;
@@ -1408,12 +1597,15 @@ Grid, Loss, 30` },
       exampleSelect.addEventListener("change", function () {
         var s = SAMPLES[Number(exampleSelect.value)];
         if (!s) return;
-        editor.value = s.code;
-        updateMeta(); render();
-        if (window.matchMedia("(max-width: 900px)").matches) showPane("preview");
+        guardReplace("the “" + s.name + "” example").then(function (ok) {
+          if (!ok) { syncSampleSelect(); return; }
+          loadCode(s.code, true, { msg: "Loaded " + s.name });
+        });
       });
       $("theme-select").addEventListener("change", function (e) {
         state.theme = e.target.value;
+        prefs.theme = state.theme;
+        savePrefs();
         initMermaid();
         render();
         galleryBuilt = false;
@@ -1550,12 +1742,11 @@ Grid, Loss, 30` },
         if (openBtn) {
           var item = findItem(openBtn.getAttribute("data-gopen"));
           if (!item) return;
-          editor.value = item.code;
-          updateMeta();
-          closeGallery();
-          render();
-          if (window.matchMedia("(max-width: 900px)").matches) showPane("preview");
-          toast("Loaded " + item.name + " in the editor");
+          guardReplace("“" + item.name + "” from the gallery").then(function (ok) {
+            if (!ok) return;
+            closeGallery();
+            loadCode(item.code, true, { msg: "Loaded " + item.name + " in the editor" });
+          });
         } else if (copyBtn) {
           var item2 = findItem(copyBtn.getAttribute("data-gcopy"));
           if (item2) copyText(item2.code, "Source copied — " + item2.name);
@@ -1670,7 +1861,19 @@ Grid, Loss, 30` },
       });
 
       /* ---------------- boot ---------------- */
-      editor.value = SAMPLES[0].code;
+      $("theme-select").value = state.theme;
+      if (!state.autoFit) {
+        autofitToggle.classList.remove("on");
+        autofitToggle.setAttribute("aria-pressed", "false");
+      }
+      var bootDraft = store.get(DRAFT_KEY);
+      var bootCode = SAMPLES[0].code, bootPristine = true;
+      if (bootDraft && typeof bootDraft.code === "string" && bootDraft.code.trim()) {
+        bootCode = bootDraft.code;
+        bootPristine = !!bootDraft.pristine;
+      }
+      editor.value = bootCode;
+      state.pristineCode = bootPristine ? bootCode : null;
       updateMeta();
       if (mermaidReady) {
         initMermaid();
