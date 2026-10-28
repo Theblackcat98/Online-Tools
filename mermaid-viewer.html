@@ -541,6 +541,52 @@
       .modal-msg { margin: 0; color: var(--mut); font-size: 14px; }
       .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
 
+      /* ---------- syntax help ---------- */
+      .help-overlay {
+        position: fixed; inset: 0;
+        background: rgba(10, 12, 16, .48);
+        z-index: 110;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 24px 14px;
+        overflow-y: auto;
+      }
+      .help-overlay[hidden] { display: none; }
+      .help-card {
+        background: var(--panel2);
+        border: 1px solid var(--line2);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        max-width: 760px;
+        width: 100%;
+        padding: 18px 20px;
+      }
+      .help-head { display: flex; align-items: center; gap: 10px; }
+      .help-head h2 { margin: 0; font-size: 17px; font-weight: 700; flex: 1; }
+      .help-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 26px; }
+      @media (max-width: 640px) { .help-grid { grid-template-columns: 1fr; } }
+      .help-card h3 {
+        font-size: 11.5px; font-weight: 600;
+        letter-spacing: .07em; text-transform: uppercase;
+        color: var(--faint);
+        margin: 16px 0 6px;
+      }
+      .help-card ul { margin: 0; padding-left: 18px; color: var(--mut); font-size: 13.5px; }
+      .help-card li { margin: 3px 0; }
+      .hc {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 12px;
+        background: var(--chip);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 0 5px;
+        color: var(--ink);
+        white-space: nowrap;
+      }
+      .help-foot { margin: 16px 0 0; font-size: 13px; color: var(--mut); }
+      .help-foot .docs-link { display: inline; padding: 0; font-size: 13px; }
+
       /* ---------- gallery overlay (Every Mermaid diagram) ---------- */
       .gallery-overlay {
         position: fixed; inset: 0;
@@ -720,6 +766,11 @@
         </div>
       </div>
 
+      <button class="btn" id="help-btn" type="button" title="Quick Mermaid syntax reference">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.4 9.2A2.7 2.7 0 1 1 12 12.6V13.2"/><line x1="12" y1="17" x2="12" y2="17.01"/></svg>
+        <span class="btn-text">Syntax</span>
+      </button>
+
       <a class="docs-link" href="https://mermaid.js.org/intro/" target="_blank" rel="noopener">Syntax docs &#8599;</a>
     </div>
 
@@ -806,6 +857,51 @@
       <div class="gallery-scroll" id="gallery-scroll">
         <div class="gallery-grid" id="gallery-grid"></div>
         <div class="gallery-empty" id="gallery-empty"><strong>No matching diagrams</strong><br />Try a different term or choose another category.</div>
+      </div>
+    </div>
+
+    <div class="help-overlay" id="help-overlay" hidden>
+      <div class="help-card" role="dialog" aria-modal="true" aria-labelledby="help-title">
+        <div class="help-head">
+          <h2 id="help-title">Mermaid syntax — quick reference</h2>
+          <button class="btn" id="help-close" type="button">Close</button>
+        </div>
+        <h3>Start a diagram</h3>
+        <ul>
+          <li>The first line picks the type: <span class="hc">flowchart TD</span>, <span class="hc">sequenceDiagram</span>, <span class="hc">classDiagram</span>, <span class="hc">gantt</span>, <span class="hc">pie</span>… — every type has a working example under <strong>All diagrams</strong>.</li>
+          <li>Directions: <span class="hc">TD</span> top-down, <span class="hc">LR</span> left-right, <span class="hc">BT</span>, <span class="hc">RL</span>.</li>
+        </ul>
+        <div class="help-grid">
+          <div>
+            <h3>Flowchart nodes</h3>
+            <ul>
+              <li><span class="hc">A[Rectangle]</span> · <span class="hc">A(Rounded)</span> · <span class="hc">A{Decision}</span></li>
+              <li><span class="hc">A([Stadium])</span> · <span class="hc">A((Circle))</span> · <span class="hc">A[[Subroutine]]</span></li>
+              <li><span class="hc">A[(Database)]</span> · <span class="hc">A&gt;Flag]</span></li>
+            </ul>
+            <h3>Arrows &amp; labels</h3>
+            <ul>
+              <li><span class="hc">A --&gt; B</span> arrow · <span class="hc">A --- B</span> plain line · <span class="hc">A -.-&gt; B</span> dotted</li>
+              <li><span class="hc">A ==&gt; B</span> thick · <span class="hc">A &lt;--&gt; B</span> both ways</li>
+              <li>Label an edge: <span class="hc">A --&gt;|yes| B</span> or <span class="hc">A -- text --&gt; B</span></li>
+            </ul>
+          </div>
+          <div>
+            <h3>Sequence essentials</h3>
+            <ul>
+              <li><span class="hc">A-&gt;&gt;B: message</span> call · <span class="hc">B--&gt;&gt;A: reply</span> dashed reply</li>
+              <li><span class="hc">Note over A,B: text</span> · blocks: <span class="hc">alt</span> / <span class="hc">else</span> / <span class="hc">end</span></li>
+            </ul>
+            <h3>Good habits</h3>
+            <ul>
+              <li>Quote labels containing spaces or symbols: <span class="hc">A["Cost (est.)"]</span></li>
+              <li>Comments start with <span class="hc">%%</span> and run to the end of the line</li>
+              <li>One statement per line; indent with two spaces</li>
+              <li>Stuck? The error bar names the line — it's highlighted in the margin</li>
+            </ul>
+          </div>
+        </div>
+        <p class="help-foot">Full reference: <a class="docs-link" href="https://mermaid.js.org/intro/" target="_blank" rel="noopener">mermaid.js.org &#8599;</a></p>
       </div>
     </div>
 
@@ -1858,6 +1954,26 @@ Grid, Loss, 30` },
         initMermaid();
         render();
         rerenderGallery();
+      });
+
+      /* ---------------- syntax help ---------------- */
+      var helpOverlay = $("help-overlay"), helpLastFocus = null;
+      function openHelp() {
+        helpLastFocus = document.activeElement;
+        helpOverlay.hidden = false;
+        $("help-close").focus();
+      }
+      function closeHelp() {
+        helpOverlay.hidden = true;
+        if (helpLastFocus && helpLastFocus.focus) helpLastFocus.focus();
+      }
+      $("help-btn").addEventListener("click", openHelp);
+      $("help-close").addEventListener("click", closeHelp);
+      helpOverlay.addEventListener("click", function (e) {
+        if (e.target === helpOverlay) closeHelp();
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && !helpOverlay.hidden) closeHelp();
       });
 
       /* ---------------- gallery overlay ---------------- */
