@@ -17,7 +17,7 @@
         --panel2: #ffffff;
         --ink: #1d2126;
         --mut: #5b6068;
-        --faint: #878c95;
+        --faint: #62666e;
         --line: #d6d7dc;
         --line2: #bfc2ca;
         --chip: #ececf0;
@@ -40,7 +40,7 @@
           --panel2: #222329;
           --ink: #eceef2;
           --mut: #a2a6af;
-          --faint: #6f737e;
+          --faint: #9ba0aa;
           --line: #2d2f36;
           --line2: #3d404a;
           --chip: #26272e;
@@ -201,16 +201,68 @@
         border-top: 1px solid var(--line);
         margin-top: 4px;
       }
+      .menu-warn {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--err-ink);
+        background: var(--err-bg);
+        border: 1px solid var(--err-line);
+        border-radius: 8px;
+        padding: 7px 10px;
+        margin: 2px 2px 6px;
+      }
+      .menu-warn[hidden] { display: none; }
+      .menu-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 6px 10px;
+      }
+      .menu-row-label { font-size: 13.5px; font-weight: 500; }
+      .menu .seg { display: inline-flex; background: var(--chip); border: 1px solid var(--line); border-radius: 999px; padding: 2px; gap: 2px; }
+      .menu .seg button {
+        width: auto;
+        border: 0;
+        background: transparent;
+        border-radius: 999px;
+        padding: 3px 10px;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--mut);
+        display: inline-flex;
+      }
+      .menu .seg button:hover { background: transparent; }
+      .menu .seg button.on { background: var(--panel2); color: var(--ink); box-shadow: 0 1px 3px rgba(20, 24, 34, .14); }
+      .menu-check { width: 15px; flex: none; color: var(--acc); font-weight: 700; text-align: center; }
 
       /* ---------- layout ---------- */
       main {
+        --split: 41.66;
         flex: 1;
         min-height: 0;
         display: grid;
-        grid-template-columns: minmax(330px, 5fr) 7fr;
-        gap: 12px;
+        grid-template-columns: minmax(240px, calc(var(--split) * 1%)) 12px minmax(240px, 1fr);
+        gap: 6px;
         padding: 12px;
       }
+      .splitter {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: col-resize;
+        touch-action: none;
+        border-radius: 6px;
+      }
+      .splitter::after {
+        content: "";
+        width: 4px;
+        height: 48px;
+        border-radius: 2px;
+        background: var(--line2);
+        transition: background .12s ease;
+      }
+      .splitter:hover::after, .splitter:focus-visible::after, .splitter.dragging::after { background: var(--acc); }
       .pane {
         background: var(--panel);
         border: 1px solid var(--line);
@@ -266,6 +318,38 @@
         will-change: transform;
       }
       .gutter-inner span { display: block; }
+      .gutter-inner span.err-line {
+        background: var(--err-bg);
+        color: var(--err-ink);
+        font-weight: 700;
+        border-radius: 0 4px 4px 0;
+        box-shadow: inset 2px 0 0 var(--err-ink);
+      }
+      .err-strip {
+        display: block;
+        width: calc(100% - 24px);
+        margin: 10px 12px 0;
+        background: var(--err-bg);
+        border: 1px solid var(--err-line);
+        color: var(--err-ink);
+        border-radius: 10px;
+        padding: 7px 12px;
+        font-size: 12.5px;
+        font-weight: 600;
+        text-align: left;
+        cursor: pointer;
+        flex: none;
+      }
+      .err-strip[hidden] { display: none; }
+      .tab-badge {
+        display: none;
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        background: #d64541;
+        margin-left: 6px;
+        vertical-align: 1px;
+      }
+      .tab-badge.show { display: inline-block; }
       #editor {
         flex: 1;
         min-width: 0;
@@ -282,6 +366,11 @@
         caret-color: var(--acc);
       }
       #editor:focus { outline: none; }
+      #editor.wrap { white-space: pre-wrap; overflow-wrap: anywhere; }
+      .editor-wrap:focus-within { box-shadow: inset 0 0 0 2px var(--acc); }
+      .zoom-group button.font-btn { width: auto; padding: 0 8px; font-size: 12px; }
+      .zoom-group button.zoom-pct { width: auto; min-width: 48px; background: transparent; border: 0; cursor: pointer; padding: 0; }
+      .zoom-group button.zoom-pct:hover { background: var(--panel2); }
 
       /* ---------- preview ---------- */
       .zoom-group { display: inline-flex; align-items: center; gap: 2px; background: var(--chip); border: 1px solid var(--line); border-radius: 999px; padding: 2px; }
@@ -399,6 +488,9 @@
         left: 50%;
         bottom: calc(18px + env(safe-area-inset-bottom));
         transform: translate(-50%, 16px);
+        display: flex;
+        align-items: center;
+        gap: 10px;
         background: var(--ink);
         color: var(--bg);
         font-size: 13.5px;
@@ -411,7 +503,89 @@
         transition: opacity .18s ease, transform .18s ease;
         z-index: 100;
       }
-      .toast.show { opacity: 1; transform: translate(-50%, 0); }
+      .toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+      .toast-action {
+        background: transparent;
+        border: 1px solid currentColor;
+        color: inherit;
+        border-radius: 999px;
+        padding: 2px 11px;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+        flex: none;
+      }
+      .toast-action:hover { opacity: .8; }
+
+      /* ---------- confirm dialog ---------- */
+      .modal-overlay {
+        position: fixed; inset: 0;
+        background: rgba(10, 12, 16, .48);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        z-index: 120;
+      }
+      .modal-overlay[hidden] { display: none; }
+      .modal-card {
+        background: var(--panel2);
+        border: 1px solid var(--line2);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        max-width: 430px;
+        width: 100%;
+        padding: 18px;
+      }
+      .modal-title { margin: 0 0 6px; font-size: 16.5px; font-weight: 700; }
+      .modal-msg { margin: 0; color: var(--mut); font-size: 14px; }
+      .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
+
+      /* ---------- syntax help ---------- */
+      .help-overlay {
+        position: fixed; inset: 0;
+        background: rgba(10, 12, 16, .48);
+        z-index: 110;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 24px 14px;
+        overflow-y: auto;
+      }
+      .help-overlay[hidden] { display: none; }
+      .help-card {
+        background: var(--panel2);
+        border: 1px solid var(--line2);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        max-width: 760px;
+        width: 100%;
+        padding: 18px 20px;
+      }
+      .help-head { display: flex; align-items: center; gap: 10px; }
+      .help-head h2 { margin: 0; font-size: 17px; font-weight: 700; flex: 1; }
+      .help-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 26px; }
+      @media (max-width: 640px) { .help-grid { grid-template-columns: 1fr; } }
+      .help-card h3 {
+        font-size: 11.5px; font-weight: 600;
+        letter-spacing: .07em; text-transform: uppercase;
+        color: var(--faint);
+        margin: 16px 0 6px;
+      }
+      .help-card ul { margin: 0; padding-left: 18px; color: var(--mut); font-size: 13.5px; }
+      .help-card li { margin: 3px 0; }
+      .hc {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 12px;
+        background: var(--chip);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 0 5px;
+        color: var(--ink);
+        white-space: nowrap;
+      }
+      .help-foot { margin: 16px 0 0; font-size: 13px; color: var(--mut); }
+      .help-foot .docs-link { display: inline; padding: 0; font-size: 13px; }
 
       /* ---------- gallery overlay (Every Mermaid diagram) ---------- */
       .gallery-overlay {
@@ -499,6 +673,7 @@
       /* ---------- responsive ---------- */
       @media (max-width: 900px) {
         main { grid-template-columns: 1fr; padding: 10px; gap: 10px; }
+        .splitter { display: none; }
         .tabs { display: inline-flex; }
         .pane { display: none; }
         .pane.active { display: flex; }
@@ -537,7 +712,7 @@
 
       <div class="tabs" role="tablist" aria-label="Pane">
         <button id="tab-code" class="on" role="tab" aria-selected="true">Code</button>
-        <button id="tab-preview" role="tab" aria-selected="false">Preview</button>
+        <button id="tab-preview" role="tab" aria-selected="false">Preview<span class="tab-badge" id="tab-badge"></span></button>
       </div>
 
       <span class="spacer"></span>
@@ -545,6 +720,10 @@
       <button class="btn" id="copy-code-btn" type="button" title="Copy diagram code">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         <span class="btn-text">Copy code</span>
+      </button>
+      <button class="btn" id="copy-link-btn" type="button" title="Copy a link that opens this exact diagram">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        <span class="btn-text">Copy link</span>
       </button>
 
       <div class="menu-wrap">
@@ -554,6 +733,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="width:12px;height:12px"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
         <div class="menu" id="export-menu" role="menu">
+          <div class="menu-warn" id="menu-warn" hidden>Your current code hasn't rendered — these exports are the last good diagram, not your latest code.</div>
           <button type="button" id="dl-svg" role="menuitem">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Download SVG
@@ -561,6 +741,22 @@
           <button type="button" id="dl-png" role="menuitem">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
             Download PNG
+          </button>
+          <button type="button" id="copy-png" role="menuitem">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy PNG image
+          </button>
+          <div class="menu-row">
+            <span class="menu-row-label">PNG scale</span>
+            <span class="seg" id="png-scale-seg" role="group" aria-label="PNG export scale">
+              <button type="button" data-scale="1">1×</button>
+              <button type="button" data-scale="2">2×</button>
+              <button type="button" data-scale="3">3×</button>
+            </span>
+          </div>
+          <button type="button" id="png-bg-toggle" role="menuitem" aria-pressed="false">
+            <span class="menu-check" id="png-bg-check"></span>
+            Transparent PNG background
           </button>
           <button type="button" id="dl-mmd" role="menuitem">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
@@ -570,9 +766,14 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
             Copy SVG markup
           </button>
-          <div class="menu-note">PNG exports at 3× resolution.</div>
+          <div class="menu-note" id="menu-note">PNG exports at 3× resolution.</div>
         </div>
       </div>
+
+      <button class="btn" id="help-btn" type="button" title="Quick Mermaid syntax reference">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.4 9.2A2.7 2.7 0 1 1 12 12.6V13.2"/><line x1="12" y1="17" x2="12" y2="17.01"/></svg>
+        <span class="btn-text">Syntax</span>
+      </button>
 
       <a class="docs-link" href="https://mermaid.js.org/intro/" target="_blank" rel="noopener">Syntax docs &#8599;</a>
     </div>
@@ -582,17 +783,25 @@
         <div class="pane-head">
           <span class="pane-title">Code</span>
           <span class="spacer"></span>
+          <button class="pill-toggle" id="wrap-toggle" type="button" aria-pressed="false"><span class="dot-sw"></span>Wrap</button>
+          <div class="zoom-group" role="group" aria-label="Editor font size">
+            <button type="button" class="font-btn" id="font-dec" aria-label="Decrease editor font size">A−</button>
+            <button type="button" class="font-btn" id="font-inc" aria-label="Increase editor font size">A+</button>
+          </div>
           <button class="small-btn" id="clear-btn" type="button">Clear</button>
           <button class="small-btn" id="render-btn" type="button" title="Render now (Ctrl/⌘ + Enter)">
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg>
             Render
           </button>
         </div>
+        <button class="err-strip" id="err-strip" type="button" hidden></button>
         <div class="editor-wrap">
           <div class="gutter" aria-hidden="true"><div class="gutter-inner" id="gutter-inner"></div></div>
           <textarea id="editor" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Mermaid diagram code" placeholder="Type Mermaid code here — e.g. flowchart TD"></textarea>
         </div>
       </section>
+
+      <div class="splitter" id="splitter" role="separator" aria-orientation="vertical" aria-label="Resize code and preview panes" aria-valuemin="15" aria-valuemax="80" tabindex="0" title="Drag to resize panes — double-click to reset"></div>
 
       <section class="pane" id="pane-preview" aria-label="Rendered diagram preview">
         <div class="pane-head">
@@ -601,7 +810,7 @@
             <button type="button" id="zoom-out" aria-label="Zoom out">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </button>
-            <span class="zoom-pct" id="zoom-pct">100%</span>
+            <button type="button" class="zoom-pct" id="zoom-pct" title="Reset zoom to 100%">100%</button>
             <button type="button" id="zoom-in" aria-label="Zoom in">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </button>
@@ -614,11 +823,11 @@
             <span class="btn-text">Fullscreen</span>
           </button>
         </div>
-        <div class="error-bar" id="error-bar">
+        <div class="error-bar" id="error-bar" aria-live="polite">
           <div class="err-title">Syntax error</div>
           <pre id="error-text"></pre>
         </div>
-        <div class="stage" id="stage">
+        <div class="stage" id="stage" tabindex="0" aria-label="Diagram stage — arrow keys pan, plus and minus zoom, 0 or F fits the diagram" title="Drag to pan · Scroll to zoom · Double-click to fit">
           <div class="canvas" id="canvas"></div>
           <div class="stage-empty" id="stage-empty">Your diagram will appear here.<br />Write some Mermaid code, or pick an example above.</div>
         </div>
@@ -652,6 +861,62 @@
       <div class="gallery-scroll" id="gallery-scroll">
         <div class="gallery-grid" id="gallery-grid"></div>
         <div class="gallery-empty" id="gallery-empty"><strong>No matching diagrams</strong><br />Try a different term or choose another category.</div>
+      </div>
+    </div>
+
+    <div class="help-overlay" id="help-overlay" hidden>
+      <div class="help-card" role="dialog" aria-modal="true" aria-labelledby="help-title">
+        <div class="help-head">
+          <h2 id="help-title">Mermaid syntax — quick reference</h2>
+          <button class="btn" id="help-close" type="button">Close</button>
+        </div>
+        <h3>Start a diagram</h3>
+        <ul>
+          <li>The first line picks the type: <span class="hc">flowchart TD</span>, <span class="hc">sequenceDiagram</span>, <span class="hc">classDiagram</span>, <span class="hc">gantt</span>, <span class="hc">pie</span>… — every type has a working example under <strong>All diagrams</strong>.</li>
+          <li>Directions: <span class="hc">TD</span> top-down, <span class="hc">LR</span> left-right, <span class="hc">BT</span>, <span class="hc">RL</span>.</li>
+        </ul>
+        <div class="help-grid">
+          <div>
+            <h3>Flowchart nodes</h3>
+            <ul>
+              <li><span class="hc">A[Rectangle]</span> · <span class="hc">A(Rounded)</span> · <span class="hc">A{Decision}</span></li>
+              <li><span class="hc">A([Stadium])</span> · <span class="hc">A((Circle))</span> · <span class="hc">A[[Subroutine]]</span></li>
+              <li><span class="hc">A[(Database)]</span> · <span class="hc">A&gt;Flag]</span></li>
+            </ul>
+            <h3>Arrows &amp; labels</h3>
+            <ul>
+              <li><span class="hc">A --&gt; B</span> arrow · <span class="hc">A --- B</span> plain line · <span class="hc">A -.-&gt; B</span> dotted</li>
+              <li><span class="hc">A ==&gt; B</span> thick · <span class="hc">A &lt;--&gt; B</span> both ways</li>
+              <li>Label an edge: <span class="hc">A --&gt;|yes| B</span> or <span class="hc">A -- text --&gt; B</span></li>
+            </ul>
+          </div>
+          <div>
+            <h3>Sequence essentials</h3>
+            <ul>
+              <li><span class="hc">A-&gt;&gt;B: message</span> call · <span class="hc">B--&gt;&gt;A: reply</span> dashed reply</li>
+              <li><span class="hc">Note over A,B: text</span> · blocks: <span class="hc">alt</span> / <span class="hc">else</span> / <span class="hc">end</span></li>
+            </ul>
+            <h3>Good habits</h3>
+            <ul>
+              <li>Quote labels containing spaces or symbols: <span class="hc">A["Cost (est.)"]</span></li>
+              <li>Comments start with <span class="hc">%%</span> and run to the end of the line</li>
+              <li>One statement per line; indent with two spaces</li>
+              <li>Stuck? The error bar names the line — it's highlighted in the margin</li>
+            </ul>
+          </div>
+        </div>
+        <p class="help-foot">Full reference: <a class="docs-link" href="https://mermaid.js.org/intro/" target="_blank" rel="noopener">mermaid.js.org &#8599;</a></p>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="confirm-overlay" hidden>
+      <div class="modal-card" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-msg">
+        <h2 class="modal-title" id="confirm-title">Replace current code?</h2>
+        <p class="modal-msg" id="confirm-msg"></p>
+        <div class="modal-actions">
+          <button class="btn" id="confirm-cancel" type="button">Cancel</button>
+          <button class="btn primary" id="confirm-ok" type="button">Replace</button>
+        </div>
       </div>
     </div>
 
@@ -1153,26 +1418,108 @@ Grid, Loss, 30` },
       var docStats = $("doc-stats"), zoomPct = $("zoom-pct");
       var paneCode = $("pane-code"), panePreview = $("pane-preview");
       var tabCode = $("tab-code"), tabPreview = $("tab-preview");
+      var errStrip = $("err-strip"), tabBadge = $("tab-badge");
       var exportMenu = $("export-menu"), exportBtn = $("export-btn");
       var toastEl = $("toast");
+      var confirmOverlay = $("confirm-overlay");
+
+      /* ---------------- persistence ---------------- */
+      var PREFS_KEY = "mermaid-viewer:prefs:v1";
+      var DRAFT_KEY = "mermaid-viewer:draft:v1";
+      var store = {
+        get: function (k) {
+          try { var v = window.localStorage.getItem(k); return v ? JSON.parse(v) : null; }
+          catch (e) { return null; }
+        },
+        set: function (k, v) {
+          try { window.localStorage.setItem(k, JSON.stringify(v)); } catch (e) {}
+        }
+      };
+      var THEME_NAMES = ["default", "neutral", "dark", "forest", "base"];
+      var prefs = Object.assign({
+        theme: "default", autoFit: true, split: null,
+        wrap: false, fontSize: 13, pngScale: 3, pngTransparent: false
+      }, store.get(PREFS_KEY) || {});
+      if (THEME_NAMES.indexOf(prefs.theme) === -1) prefs.theme = "default";
+      function savePrefs() { store.set(PREFS_KEY, prefs); }
 
       var state = {
-        theme: "default",
+        theme: prefs.theme,
         scale: 1, tx: 0, ty: 0,
         natW: 0, natH: 0,
-        autoFit: true,
+        autoFit: prefs.autoFit !== false,
         lastSvg: "",
+        renderedCode: "",
+        pristineCode: null,
+        errorLine: 0,
+        viewTouched: false,
         renderSeq: 0,
         debounce: null
       };
 
+      var draftTimer = null;
+      function persistDraft() {
+        if (draftTimer) clearTimeout(draftTimer);
+        draftTimer = setTimeout(function () {
+          store.set(DRAFT_KEY, {
+            code: editor.value,
+            pristine: editor.value === state.pristineCode
+          });
+        }, 250);
+      }
+
       var toastTimer = null;
-      function toast(msg) {
-        toastEl.textContent = msg;
+      function hideToast() {
+        toastEl.classList.remove("show");
+        if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
+      }
+      function toast(msg, actionLabel, onAction) {
+        toastEl.innerHTML = "";
+        var span = document.createElement("span");
+        span.textContent = msg;
+        toastEl.appendChild(span);
+        if (actionLabel && onAction) {
+          var b = document.createElement("button");
+          b.type = "button";
+          b.className = "toast-action";
+          b.textContent = actionLabel;
+          b.addEventListener("click", function () { hideToast(); onAction(); });
+          toastEl.appendChild(b);
+        }
         toastEl.classList.add("show");
         if (toastTimer) clearTimeout(toastTimer);
-        toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, 2200);
+        toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, actionLabel ? 6000 : 2200);
       }
+
+      /* ---------------- confirm dialog ---------------- */
+      var confirmResolve = null, confirmLastFocus = null;
+      function confirmDialog(title, msg, okLabel) {
+        return new Promise(function (resolve) {
+          confirmResolve = resolve;
+          $("confirm-title").textContent = title;
+          $("confirm-msg").textContent = msg;
+          $("confirm-ok").textContent = okLabel || "Replace";
+          confirmLastFocus = document.activeElement;
+          confirmOverlay.hidden = false;
+          $("confirm-cancel").focus();
+        });
+      }
+      function settleConfirm(v) {
+        if (!confirmResolve) return;
+        var r = confirmResolve;
+        confirmResolve = null;
+        confirmOverlay.hidden = true;
+        if (confirmLastFocus && confirmLastFocus.focus) confirmLastFocus.focus();
+        r(v);
+      }
+      $("confirm-ok").addEventListener("click", function () { settleConfirm(true); });
+      $("confirm-cancel").addEventListener("click", function () { settleConfirm(false); });
+      confirmOverlay.addEventListener("click", function (e) {
+        if (e.target === confirmOverlay) settleConfirm(false);
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && !confirmOverlay.hidden) settleConfirm(false);
+      });
 
       function setStatus(mode, text) {
         statusDot.className = "status-dot" + (mode ? " " + mode : "");
@@ -1191,6 +1538,28 @@ Grid, Loss, 30` },
         });
       }
 
+      function parseErrorLine(msg) {
+        var m = /line\s+(\d+)/i.exec(msg || "");
+        return m ? parseInt(m[1], 10) : 0;
+      }
+      function scrollToErrorLine(n) {
+        if (!n) return;
+        var cs = getComputedStyle(editor);
+        var lh = parseFloat(cs.lineHeight);
+        if (!lh || isNaN(lh)) lh = (parseFloat(cs.fontSize) || 13) * 1.55;
+        editor.scrollTop = Math.max(0, (n - 1) * lh - editor.clientHeight / 3);
+      }
+      function clearErrorUI() {
+        state.errorLine = 0;
+        errorBar.classList.remove("show");
+        errStrip.hidden = true;
+        tabBadge.classList.remove("show");
+      }
+      errStrip.addEventListener("click", function () {
+        if (window.matchMedia("(max-width: 900px)").matches) showPane("preview");
+        else { scrollToErrorLine(state.errorLine); editor.focus(); }
+      });
+
       function render() {
         if (!mermaidReady) {
           setStatus("err", "Mermaid failed to load — check your connection and reload.");
@@ -1200,8 +1569,9 @@ Grid, Loss, 30` },
         if (!code.trim()) {
           canvas.innerHTML = "";
           state.lastSvg = ""; state.natW = 0; state.natH = 0;
+          state.renderedCode = "";
           stageEmpty.classList.add("show");
-          errorBar.classList.remove("show");
+          clearErrorUI();
           setStatus("", "Empty — write some Mermaid code");
           return;
         }
@@ -1218,20 +1588,32 @@ Grid, Loss, 30` },
             state.natH = vb[3] || svg.getBoundingClientRect().height;
             svg.setAttribute("width", state.natW);
             svg.setAttribute("height", state.natH);
+            svg.setAttribute("role", "img");
+            svg.setAttribute("aria-label", "Rendered Mermaid diagram");
             svg.style.width = state.natW + "px";
             svg.style.height = state.natH + "px";
             svg.style.maxWidth = "none";
           }
           stageEmpty.classList.remove("show");
-          errorBar.classList.remove("show");
+          state.renderedCode = code;
+          clearErrorUI();
+          updateMeta();
           setStatus("ok", "Rendered");
-          if (state.autoFit) fit();
+          if (state.autoFit && !state.viewTouched) fit();
           else applyTransform();
         }).catch(function (err) {
           if (seq !== state.renderSeq) return;
           var msg = (err && err.message) ? err.message : String(err);
           errorText.textContent = msg.length > 900 ? msg.slice(0, 900) + "…" : msg;
           errorBar.classList.add("show");
+          state.errorLine = parseErrorLine(msg);
+          errStrip.textContent = state.errorLine
+            ? "Syntax error on line " + state.errorLine + " — full message in the Preview pane"
+            : "Syntax error — full message in the Preview pane";
+          errStrip.hidden = false;
+          if (!panePreview.classList.contains("active")) tabBadge.classList.add("show");
+          updateMeta();
+          scrollToErrorLine(state.errorLine);
           setStatus("err", "Syntax error — last good diagram kept");
         });
       }
@@ -1256,12 +1638,14 @@ Grid, Loss, 30` },
         state.scale = clampScale(s);
         state.tx = (r.width - state.natW * state.scale) / 2;
         state.ty = (r.height - state.natH * state.scale) / 2;
+        state.viewTouched = false;
         applyTransform();
       }
       function zoomAt(mx, my, factor) {
         var s0 = state.scale;
         var s1 = clampScale(s0 * factor);
         if (s1 === s0) return;
+        state.viewTouched = true;
         var px = (mx - state.tx) / s0, py = (my - state.ty) / s0;
         state.scale = s1;
         state.tx = mx - px * s1;
@@ -1297,8 +1681,10 @@ Grid, Loss, 30` },
         pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
         if (pointers.size === 1) {
           state.tx += dx; state.ty += dy;
+          state.viewTouched = true;
           applyTransform();
         } else if (pointers.size === 2 && pinch) {
+          state.viewTouched = true;
           var pts = Array.from(pointers.values());
           var r = stage.getBoundingClientRect();
           var mx = (pts[0].x + pts[1].x) / 2 - r.left, my = (pts[0].y + pts[1].y) / 2 - r.top;
@@ -1318,19 +1704,37 @@ Grid, Loss, 30` },
       stage.addEventListener("wheel", function (e) {
         e.preventDefault();
         var r = stage.getBoundingClientRect();
-        zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0016));
+        var dy = Math.max(-120, Math.min(120, e.deltaY));
+        zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-dy * 0.0016));
       }, { passive: false });
       stage.addEventListener("dblclick", function () { fit(); });
+      stage.addEventListener("keydown", function (e) {
+        var step = e.shiftKey ? 120 : 40, handled = true;
+        if (e.key === "ArrowLeft") { state.tx += step; state.viewTouched = true; applyTransform(); }
+        else if (e.key === "ArrowRight") { state.tx -= step; state.viewTouched = true; applyTransform(); }
+        else if (e.key === "ArrowUp") { state.ty += step; state.viewTouched = true; applyTransform(); }
+        else if (e.key === "ArrowDown") { state.ty -= step; state.viewTouched = true; applyTransform(); }
+        else if (e.key === "+" || e.key === "=") zoomCenter(1.2);
+        else if (e.key === "-" || e.key === "_") zoomCenter(1 / 1.2);
+        else if (e.key === "0" || e.key === "f" || e.key === "F") fit();
+        else handled = false;
+        if (handled) e.preventDefault();
+      });
 
       $("zoom-in").addEventListener("click", function () { zoomCenter(1.25); });
       $("zoom-out").addEventListener("click", function () { zoomCenter(0.8); });
       $("zoom-fit").addEventListener("click", fit);
+      zoomPct.addEventListener("click", function () {
+        if (state.scale !== 1) zoomCenter(1 / state.scale);
+      });
       var autofitToggle = $("autofit-toggle");
       autofitToggle.addEventListener("click", function () {
         state.autoFit = !state.autoFit;
+        prefs.autoFit = state.autoFit;
+        savePrefs();
         autofitToggle.classList.toggle("on", state.autoFit);
         autofitToggle.setAttribute("aria-pressed", String(state.autoFit));
-        if (state.autoFit) fit();
+        if (state.autoFit) { state.viewTouched = false; fit(); }
       });
       $("fs-btn").addEventListener("click", function () {
         if (document.fullscreenElement) { document.exitFullscreen(); return; }
@@ -1339,28 +1743,148 @@ Grid, Loss, 30` },
         } else { toast("Fullscreen isn't available here"); }
       });
       document.addEventListener("fullscreenchange", function () {
-        setTimeout(function () { if (state.autoFit) fit(); }, 60);
+        setTimeout(function () { if (state.autoFit && !state.viewTouched) fit(); }, 60);
       });
       var resizeTimer = null;
       window.addEventListener("resize", function () {
         if (resizeTimer) clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function () { if (state.autoFit) fit(); }, 150);
+        resizeTimer = setTimeout(function () { if (state.autoFit && !state.viewTouched) fit(); }, 150);
+      });
+
+      /* ---------------- pane splitter ---------------- */
+      var mainEl = document.querySelector("main");
+      var splitter = $("splitter");
+      state.splitPct = prefs.split || 41.66;
+      if (prefs.split) mainEl.style.setProperty("--split", state.splitPct);
+      splitter.setAttribute("aria-valuenow", String(Math.round(state.splitPct)));
+      function setSplit(pct) {
+        pct = Math.min(80, Math.max(15, pct));
+        state.splitPct = Math.round(pct * 10) / 10;
+        mainEl.style.setProperty("--split", state.splitPct);
+        splitter.setAttribute("aria-valuenow", String(Math.round(state.splitPct)));
+        if (state.autoFit && !state.viewTouched) fit();
+      }
+      var splitDragId = null;
+      splitter.addEventListener("pointerdown", function (e) {
+        splitDragId = e.pointerId;
+        splitter.setPointerCapture(e.pointerId);
+        splitter.classList.add("dragging");
+        e.preventDefault();
+      });
+      splitter.addEventListener("pointermove", function (e) {
+        if (splitDragId === null || e.pointerId !== splitDragId) return;
+        var r = mainEl.getBoundingClientRect();
+        setSplit((e.clientX - r.left) / r.width * 100);
+      });
+      function endSplitDrag() {
+        if (splitDragId === null) return;
+        splitDragId = null;
+        splitter.classList.remove("dragging");
+        prefs.split = state.splitPct;
+        savePrefs();
+      }
+      splitter.addEventListener("pointerup", endSplitDrag);
+      splitter.addEventListener("pointercancel", endSplitDrag);
+      splitter.addEventListener("keydown", function (e) {
+        var step = e.shiftKey ? 6 : 2, handled = true;
+        if (e.key === "ArrowLeft") setSplit(state.splitPct - step);
+        else if (e.key === "ArrowRight") setSplit(state.splitPct + step);
+        else if (e.key === "Home") setSplit(41.66);
+        else handled = false;
+        if (handled) {
+          e.preventDefault();
+          prefs.split = state.splitPct;
+          savePrefs();
+        }
+      });
+      splitter.addEventListener("dblclick", function () {
+        setSplit(41.66);
+        prefs.split = state.splitPct;
+        savePrefs();
       });
 
       /* ---------------- editor ---------------- */
+      function isUserWork() {
+        return editor.value.trim() !== "" && editor.value !== state.pristineCode;
+      }
+      function syncSampleSelect() {
+        for (var i = 0; i < SAMPLES.length; i++) {
+          if (editor.value === SAMPLES[i].code) { exampleSelect.value = String(i); return; }
+        }
+        exampleSelect.value = "-1";
+      }
+      function loadCode(code, pristine, opts) {
+        opts = opts || {};
+        var prev = { code: editor.value, pristine: state.pristineCode };
+        editor.value = code;
+        state.pristineCode = pristine ? code : null;
+        state.viewTouched = false;
+        updateMeta();
+        render();
+        persistDraft();
+        scheduleHash();
+        if (opts.msg && prev.code && prev.code !== code) {
+          toast(opts.msg, "Undo", function () {
+            editor.value = prev.code;
+            state.pristineCode = prev.pristine;
+            updateMeta();
+            render();
+            persistDraft();
+            scheduleHash();
+            editor.focus();
+          });
+        } else if (opts.msg) {
+          toast(opts.msg);
+        }
+      }
+      function guardReplace(what) {
+        if (!isUserWork()) return Promise.resolve(true);
+        return confirmDialog(
+          "Replace your code?",
+          "Loading " + what + " will replace the code you've been editing — it isn't saved anywhere else.",
+          "Replace"
+        );
+      }
+
       function updateMeta() {
         var v = editor.value;
         var lines = v ? v.split("\n").length : 0;
         docStats.textContent = lines + (lines === 1 ? " line" : " lines") + " · " + v.length + " chars";
         var html = "";
-        for (var i = 1; i <= Math.max(lines, 1); i++) html += "<span>" + i + "</span>";
+        for (var i = 1; i <= Math.max(lines, 1); i++) {
+          html += "<span" + (i === state.errorLine ? ' class="err-line"' : "") + ">" + i + "</span>";
+        }
         gutterInner.innerHTML = html;
         gutterInner.style.transform = "translateY(" + (-editor.scrollTop) + "px)";
+        syncSampleSelect();
       }
       editor.addEventListener("scroll", function () {
         gutterInner.style.transform = "translateY(" + (-editor.scrollTop) + "px)";
       });
-      editor.addEventListener("input", function () { updateMeta(); scheduleRender(); });
+
+      var wrapToggle = $("wrap-toggle");
+      function applyEditorPrefs() {
+        editor.classList.toggle("wrap", !!prefs.wrap);
+        editor.style.fontSize = prefs.fontSize + "px";
+        gutterInner.style.fontSize = prefs.fontSize + "px";
+        wrapToggle.classList.toggle("on", !!prefs.wrap);
+        wrapToggle.setAttribute("aria-pressed", String(!!prefs.wrap));
+      }
+      wrapToggle.addEventListener("click", function () {
+        prefs.wrap = !prefs.wrap;
+        savePrefs();
+        applyEditorPrefs();
+        editor.focus();
+      });
+      function setFontSize(px) {
+        prefs.fontSize = Math.min(18, Math.max(11, px));
+        savePrefs();
+        applyEditorPrefs();
+      }
+      $("font-dec").addEventListener("click", function () { setFontSize(prefs.fontSize - 1); });
+      $("font-inc").addEventListener("click", function () { setFontSize(prefs.fontSize + 1); });
+      applyEditorPrefs();
+      editor.addEventListener("input", function () { updateMeta(); scheduleRender(); persistDraft(); scheduleHash(); });
       editor.addEventListener("keydown", function (e) {
         if (e.key === "Tab") {
           e.preventDefault();
@@ -1379,9 +1903,17 @@ Grid, Loss, 30` },
         if (window.matchMedia("(max-width: 900px)").matches) showPane("preview");
       });
       $("clear-btn").addEventListener("click", function () {
-        editor.value = "";
-        updateMeta(); render();
-        editor.focus();
+        if (!editor.value) { toast("Editor is already empty"); return; }
+        function clearNow() {
+          loadCode("", true, { msg: "Editor cleared" });
+          editor.focus();
+        }
+        if (isUserWork()) {
+          confirmDialog("Clear your code?", "This clears the code you've been editing — it isn't saved anywhere else.", "Clear")
+            .then(function (ok) { if (ok) clearNow(); else editor.focus(); });
+        } else {
+          clearNow();
+        }
       });
 
       /* ---------------- mobile tabs ---------------- */
@@ -1393,13 +1925,21 @@ Grid, Loss, 30` },
         tabPreview.classList.toggle("on", !code);
         tabCode.setAttribute("aria-selected", String(code));
         tabPreview.setAttribute("aria-selected", String(!code));
-        if (!code) requestAnimationFrame(function () { if (state.autoFit) fit(); else applyTransform(); });
+        if (!code) {
+          tabBadge.classList.remove("show");
+          requestAnimationFrame(function () { if (state.autoFit && !state.viewTouched) fit(); else applyTransform(); });
+        }
       }
       tabCode.addEventListener("click", function () { showPane("code"); });
       tabPreview.addEventListener("click", function () { showPane("preview"); });
 
       /* ---------------- toolbar ---------------- */
       var exampleSelect = $("example-select");
+      var customOpt = document.createElement("option");
+      customOpt.value = "-1";
+      customOpt.textContent = "Custom / edited";
+      customOpt.disabled = true;
+      exampleSelect.appendChild(customOpt);
       SAMPLES.forEach(function (s, i) {
         var opt = document.createElement("option");
         opt.value = String(i); opt.textContent = s.name;
@@ -1408,15 +1948,38 @@ Grid, Loss, 30` },
       exampleSelect.addEventListener("change", function () {
         var s = SAMPLES[Number(exampleSelect.value)];
         if (!s) return;
-        editor.value = s.code;
-        updateMeta(); render();
-        if (window.matchMedia("(max-width: 900px)").matches) showPane("preview");
+        guardReplace("the “" + s.name + "” example").then(function (ok) {
+          if (!ok) { syncSampleSelect(); return; }
+          loadCode(s.code, true, { msg: "Loaded " + s.name });
+        });
       });
       $("theme-select").addEventListener("change", function (e) {
         state.theme = e.target.value;
+        prefs.theme = state.theme;
+        savePrefs();
         initMermaid();
         render();
-        galleryBuilt = false;
+        rerenderGallery();
+      });
+
+      /* ---------------- syntax help ---------------- */
+      var helpOverlay = $("help-overlay"), helpLastFocus = null;
+      function openHelp() {
+        helpLastFocus = document.activeElement;
+        helpOverlay.hidden = false;
+        $("help-close").focus();
+      }
+      function closeHelp() {
+        helpOverlay.hidden = true;
+        if (helpLastFocus && helpLastFocus.focus) helpLastFocus.focus();
+      }
+      $("help-btn").addEventListener("click", openHelp);
+      $("help-close").addEventListener("click", closeHelp);
+      helpOverlay.addEventListener("click", function (e) {
+        if (e.target === helpOverlay) closeHelp();
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && !helpOverlay.hidden) closeHelp();
       });
 
       /* ---------------- gallery overlay ---------------- */
@@ -1424,6 +1987,12 @@ Grid, Loss, 30` },
       var gallerySearch = $("gallery-search"), galleryChips = $("gallery-chips");
       var galleryEmpty = $("gallery-empty"), galleryBtn = $("gallery-btn");
       var galleryBuilt = false, gallerySeq = 0, galleryCat = "all";
+      var galleryRendered = {}, galleryChain = Promise.resolve(), galleryObserver = null;
+
+      function findGalleryItem(id) {
+        for (var i = 0; i < GALLERY.length; i++) if (GALLERY[i].id === id) return GALLERY[i];
+        return null;
+      }
 
       function catLabel(id) {
         for (var i = 0; i < GALLERY_CATS.length; i++) if (GALLERY_CATS[i].id === id) return GALLERY_CATS[i].label;
@@ -1444,7 +2013,7 @@ Grid, Loss, 30` },
       function buildGalleryCards() {
         galleryGrid.innerHTML = GALLERY.map(function (item, i) {
           var search = (item.name + " " + item.blurb + " " + item.uses.join(" ")).toLowerCase();
-          return '<article class="g-card" data-gsearch="' + escHtml(search) + '" data-gcat="' + item.category + '">' +
+          return '<article class="g-card" data-gid="' + item.id + '" data-gsearch="' + escHtml(search) + '" data-gcat="' + item.category + '">' +
             '<div class="g-card-head"><span class="g-num">' + String(i + 1).padStart(2, "0") + '</span>' +
             '<span class="g-name">' + escHtml(item.name) + '</span>' +
             '<span class="g-cat">' + escHtml(catLabel(item.category)) + "</span></div>" +
@@ -1461,6 +2030,33 @@ Grid, Loss, 30` },
         }).join("");
       }
 
+      function queueGalleryRender(item) {
+        if (galleryRendered[item.id]) return;
+        galleryRendered[item.id] = true;
+        var seq = gallerySeq;
+        galleryChain = galleryChain.then(function () {
+          if (seq !== gallerySeq) return;
+          var el = $("g-stage-" + item.id);
+          if (!el) return;
+          return window.mermaid.render("gal-" + seq + "-" + item.id, item.code).then(function (res) {
+            if (seq !== gallerySeq) return;
+            el.innerHTML = res.svg;
+            if (typeof res.bindFunctions === "function") res.bindFunctions(el);
+            var svg = el.querySelector("svg");
+            if (svg) {
+              svg.removeAttribute("height");
+              svg.style.maxWidth = "100%";
+              svg.style.height = "auto";
+              svg.setAttribute("role", "img");
+              svg.setAttribute("aria-label", item.name + " example");
+            }
+          }).catch(function (err) {
+            if (seq !== gallerySeq) return;
+            el.innerHTML = '<span class="g-render-err">This example didn\'t render under Mermaid ' + PINNED_VERSION + " — open it in the editor to inspect the source.</span>";
+          });
+        });
+      }
+
       function renderGalleryDiagrams() {
         if (!mermaidReady) {
           GALLERY.forEach(function (item) {
@@ -1469,31 +2065,30 @@ Grid, Loss, 30` },
           });
           return;
         }
-        var seq = ++gallerySeq;
-        var chain = Promise.resolve();
-        GALLERY.forEach(function (item, i) {
-          chain = chain.then(function () {
-            if (seq !== gallerySeq) return;
-            var el = $("g-stage-" + item.id);
-            if (!el) return;
-            return window.mermaid.render("gal-" + seq + "-" + i, item.code).then(function (res) {
-              if (seq !== gallerySeq) return;
-              el.innerHTML = res.svg;
-              if (typeof res.bindFunctions === "function") res.bindFunctions(el);
-              var svg = el.querySelector("svg");
-              if (svg) {
-                svg.removeAttribute("height");
-                svg.style.maxWidth = "100%";
-                svg.style.height = "auto";
-                svg.setAttribute("role", "img");
-                svg.setAttribute("aria-label", item.name + " example");
-              }
-            }).catch(function (err) {
-              if (seq !== gallerySeq) return;
-              var msg = (err && err.message) ? err.message : String(err);
-              el.innerHTML = '<span class="g-render-err">This example didn\'t render under Mermaid ' + PINNED_VERSION + " — open it in the editor to inspect the source.</span>";
+        if ("IntersectionObserver" in window) {
+          galleryObserver = new IntersectionObserver(function (entries) {
+            entries.forEach(function (en) {
+              if (!en.isIntersecting) return;
+              var item = findGalleryItem(en.target.getAttribute("data-gid"));
+              if (item) queueGalleryRender(item);
+              galleryObserver.unobserve(en.target);
             });
+          }, { root: $("gallery-scroll"), rootMargin: "600px" });
+          galleryGrid.querySelectorAll(".g-card").forEach(function (card) {
+            galleryObserver.observe(card);
           });
+        } else {
+          GALLERY.forEach(queueGalleryRender);
+        }
+      }
+
+      function rerenderGallery() {
+        if (!galleryBuilt || !mermaidReady) return;
+        gallerySeq++;
+        Object.keys(galleryRendered).forEach(function (id) {
+          var item = findGalleryItem(id);
+          delete galleryRendered[id];
+          if (item) queueGalleryRender(item);
         });
       }
 
@@ -1550,12 +2145,11 @@ Grid, Loss, 30` },
         if (openBtn) {
           var item = findItem(openBtn.getAttribute("data-gopen"));
           if (!item) return;
-          editor.value = item.code;
-          updateMeta();
-          closeGallery();
-          render();
-          if (window.matchMedia("(max-width: 900px)").matches) showPane("preview");
-          toast("Loaded " + item.name + " in the editor");
+          guardReplace("“" + item.name + "” from the gallery").then(function (ok) {
+            if (!ok) return;
+            closeGallery();
+            loadCode(item.code, true, { msg: "Loaded " + item.name + " in the editor" });
+          });
         } else if (copyBtn) {
           var item2 = findItem(copyBtn.getAttribute("data-gcopy"));
           if (item2) copyText(item2.code, "Source copied — " + item2.name);
@@ -1607,6 +2201,70 @@ Grid, Loss, 30` },
         if (!state.lastSvg) { toast("Nothing rendered yet — fix the code first"); return false; }
         return true;
       }
+      function isStale() {
+        return !!state.lastSvg && editor.value !== state.renderedCode;
+      }
+      function guardExport() {
+        if (!needDiagram()) return Promise.resolve(false);
+        if (isStale()) {
+          return confirmDialog(
+            "Export the last good diagram?",
+            "Your current code hasn't rendered successfully, so this export will be the previous diagram — not your latest code.",
+            "Export anyway"
+          );
+        }
+        return Promise.resolve(true);
+      }
+      function pngBlob(callback) {
+        var xml = sizedSvgString();
+        var url = URL.createObjectURL(new Blob([xml], { type: "image/svg+xml;charset=utf-8" }));
+        var img = new Image();
+        img.onload = function () {
+          var factor = prefs.pngScale || 3;
+          var c = document.createElement("canvas");
+          c.width = Math.max(1, Math.round(state.natW * factor));
+          c.height = Math.max(1, Math.round(state.natH * factor));
+          var ctx = c.getContext("2d");
+          if (!prefs.pngTransparent) {
+            ctx.fillStyle = getComputedStyle(stage).backgroundColor;
+            ctx.fillRect(0, 0, c.width, c.height);
+          }
+          ctx.drawImage(img, 0, 0, c.width, c.height);
+          URL.revokeObjectURL(url);
+          if (c.toBlob) c.toBlob(function (blob) { callback(blob); }, "image/png");
+          else callback(null);
+        };
+        img.onerror = function () { URL.revokeObjectURL(url); callback(null); };
+        img.src = url;
+      }
+
+      var menuWarn = $("menu-warn"), menuNote = $("menu-note");
+      var pngScaleSeg = $("png-scale-seg"), pngBgToggle = $("png-bg-toggle"), pngBgCheck = $("png-bg-check");
+      function syncPngUI() {
+        pngScaleSeg.querySelectorAll("[data-scale]").forEach(function (b) {
+          b.classList.toggle("on", Number(b.getAttribute("data-scale")) === prefs.pngScale);
+        });
+        pngBgToggle.setAttribute("aria-pressed", String(!!prefs.pngTransparent));
+        pngBgCheck.textContent = prefs.pngTransparent ? "✓" : "";
+        menuNote.textContent = "PNG exports at " + prefs.pngScale + "× resolution" +
+          (prefs.pngTransparent ? ", transparent background." : ".");
+      }
+      function refreshMenu() {
+        menuWarn.hidden = !isStale();
+        syncPngUI();
+      }
+      pngScaleSeg.addEventListener("click", function (e) {
+        var b = e.target.closest("[data-scale]");
+        if (!b) return;
+        prefs.pngScale = Number(b.getAttribute("data-scale"));
+        savePrefs();
+        syncPngUI();
+      });
+      pngBgToggle.addEventListener("click", function () {
+        prefs.pngTransparent = !prefs.pngTransparent;
+        savePrefs();
+        syncPngUI();
+      });
 
       $("copy-code-btn").addEventListener("click", function () {
         if (!editor.value) { toast("Editor is empty"); return; }
@@ -1614,6 +2272,7 @@ Grid, Loss, 30` },
       });
       exportBtn.addEventListener("click", function (e) {
         e.stopPropagation();
+        refreshMenu();
         var open = exportMenu.classList.toggle("open");
         exportBtn.setAttribute("aria-expanded", String(open));
       });
@@ -1627,9 +2286,11 @@ Grid, Loss, 30` },
 
       $("dl-svg").addEventListener("click", function () {
         closeMenu();
-        if (!needDiagram()) return;
-        download("diagram.svg", new Blob([sizedSvgString()], { type: "image/svg+xml;charset=utf-8" }));
-        toast("SVG downloaded");
+        guardExport().then(function (ok) {
+          if (!ok) return;
+          download("diagram.svg", new Blob([sizedSvgString()], { type: "image/svg+xml;charset=utf-8" }));
+          toast("SVG downloaded");
+        });
       });
       $("dl-mmd").addEventListener("click", function () {
         closeMenu();
@@ -1639,49 +2300,150 @@ Grid, Loss, 30` },
       });
       $("copy-svg").addEventListener("click", function () {
         closeMenu();
-        if (!needDiagram()) return;
-        copyText(sizedSvgString(), "SVG markup copied");
+        guardExport().then(function (ok) {
+          if (!ok) return;
+          copyText(sizedSvgString(), "SVG markup copied");
+        });
       });
       $("dl-png").addEventListener("click", function () {
         closeMenu();
-        if (!needDiagram()) return;
-        var xml = sizedSvgString();
-        var url = URL.createObjectURL(new Blob([xml], { type: "image/svg+xml;charset=utf-8" }));
-        var img = new Image();
-        img.onload = function () {
-          var factor = 3;
-          var c = document.createElement("canvas");
-          c.width = Math.max(1, Math.round(state.natW * factor));
-          c.height = Math.max(1, Math.round(state.natH * factor));
-          var ctx = c.getContext("2d");
-          ctx.fillStyle = getComputedStyle(stage).backgroundColor;
-          ctx.fillRect(0, 0, c.width, c.height);
-          ctx.drawImage(img, 0, 0, c.width, c.height);
-          URL.revokeObjectURL(url);
-          if (c.toBlob) {
-            c.toBlob(function (blob) {
-              if (blob) { download("diagram.png", blob); toast("PNG downloaded"); }
-              else toast("PNG export failed");
-            }, "image/png");
-          } else toast("PNG export isn't supported here");
-        };
-        img.onerror = function () { URL.revokeObjectURL(url); toast("PNG export failed"); };
-        img.src = url;
+        guardExport().then(function (ok) {
+          if (!ok) return;
+          pngBlob(function (blob) {
+            if (blob) { download("diagram.png", blob); toast("PNG downloaded"); }
+            else toast("PNG export failed");
+          });
+        });
+      });
+      $("copy-png").addEventListener("click", function () {
+        closeMenu();
+        guardExport().then(function (ok) {
+          if (!ok) return;
+          if (!(navigator.clipboard && window.ClipboardItem)) {
+            toast("Copy PNG isn't supported in this browser");
+            return;
+          }
+          pngBlob(function (blob) {
+            if (!blob) { toast("PNG export failed"); return; }
+            try {
+              var item = {};
+              item["image/png"] = blob;
+              navigator.clipboard.write([new ClipboardItem(item)]).then(
+                function () { toast("PNG copied"); },
+                function () { toast("Copy PNG failed"); }
+              );
+            } catch (e) { toast("Copy PNG isn't supported in this browser"); }
+          });
+        });
+      });
+
+      /* ---------------- share links ---------------- */
+      function b64EncodeBytes(bytes) {
+        var s = "";
+        for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+        return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      }
+      function b64DecodeBytes(str) {
+        str = str.replace(/-/g, "+").replace(/_/g, "/");
+        while (str.length % 4) str += "=";
+        var s = atob(str);
+        var u = new Uint8Array(s.length);
+        for (var i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
+        return u;
+      }
+      function encodeShare(code) {
+        var bytes = new TextEncoder().encode(code);
+        if (typeof CompressionStream !== "undefined") {
+          try {
+            return new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream("deflate")))
+              .arrayBuffer()
+              .then(function (buf) { return "c=" + b64EncodeBytes(new Uint8Array(buf)); })
+              .catch(function () { return "p=" + b64EncodeBytes(bytes); });
+          } catch (e) { /* fall through to plain */ }
+        }
+        return Promise.resolve("p=" + b64EncodeBytes(bytes));
+      }
+      function decodeShare(frag) {
+        var bytes;
+        try { bytes = b64DecodeBytes(frag.slice(2)); } catch (e) { return Promise.resolve(null); }
+        if (frag.indexOf("c=") !== 0) {
+          try { return Promise.resolve(new TextDecoder().decode(bytes)); }
+          catch (e) { return Promise.resolve(null); }
+        }
+        if (typeof DecompressionStream === "undefined") return Promise.resolve(null);
+        try {
+          return new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate")))
+            .text()
+            .catch(function () { return null; });
+        } catch (e) { return Promise.resolve(null); }
+      }
+      var hashTimer = null, hashSeq = 0;
+      function syncHash() {
+        var code = editor.value;
+        var my = ++hashSeq;
+        if (!code.trim()) {
+          if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+          return;
+        }
+        encodeShare(code).then(function (frag) {
+          if (my !== hashSeq) return;
+          var want = "#" + frag;
+          if (location.hash !== want) history.replaceState(null, "", want);
+        });
+      }
+      function scheduleHash() {
+        if (hashTimer) clearTimeout(hashTimer);
+        hashTimer = setTimeout(syncHash, 700);
+      }
+      $("copy-link-btn").addEventListener("click", function () {
+        if (!editor.value.trim()) { toast("Nothing to share yet — write some code first"); return; }
+        encodeShare(editor.value).then(function (frag) {
+          hashSeq++;
+          history.replaceState(null, "", "#" + frag);
+          copyText(location.href, "Link copied — it opens this exact diagram");
+        });
       });
 
       /* ---------------- boot ---------------- */
-      editor.value = SAMPLES[0].code;
-      updateMeta();
-      if (mermaidReady) {
-        initMermaid();
-        var v = (window.mermaid && window.mermaid.version) ? window.mermaid.version : PINNED_VERSION;
-        $("version-label").textContent = "Mermaid " + v;
-        render();
-        requestAnimationFrame(fit);
+      $("theme-select").value = state.theme;
+      if (!state.autoFit) {
+        autofitToggle.classList.remove("on");
+        autofitToggle.setAttribute("aria-pressed", "false");
+      }
+      function draftOrSample() {
+        var draft = store.get(DRAFT_KEY);
+        if (draft && typeof draft.code === "string" && draft.code.trim()) {
+          return { code: draft.code, pristine: !!draft.pristine };
+        }
+        return { code: SAMPLES[0].code, pristine: true };
+      }
+      function startWith(code, pristine) {
+        editor.value = code;
+        state.pristineCode = pristine ? code : null;
+        updateMeta();
+        if (mermaidReady) {
+          initMermaid();
+          var v = (window.mermaid && window.mermaid.version) ? window.mermaid.version : PINNED_VERSION;
+          $("version-label").textContent = "Mermaid " + v;
+          render();
+          requestAnimationFrame(fit);
+        } else {
+          $("version-label").textContent = "Mermaid " + PINNED_VERSION;
+          setStatus("err", "Mermaid failed to load — check your connection and reload.");
+          stageEmpty.classList.add("show");
+        }
+      }
+      var bootHash = location.hash;
+      if (bootHash.length > 3 && (bootHash.indexOf("#c=") === 0 || bootHash.indexOf("#p=") === 0)) {
+        decodeShare(bootHash.slice(1)).then(function (code) {
+          if (code && code.trim()) { startWith(code, false); return; }
+          var d = draftOrSample();
+          startWith(d.code, d.pristine);
+          toast("Couldn't read the diagram in that link — loaded your draft instead");
+        });
       } else {
-        $("version-label").textContent = "Mermaid " + PINNED_VERSION;
-        setStatus("err", "Mermaid failed to load — check your connection and reload.");
-        stageEmpty.classList.add("show");
+        var d0 = draftOrSample();
+        startWith(d0.code, d0.pristine);
       }
     </script>
   </body>
