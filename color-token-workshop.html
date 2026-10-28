@@ -320,6 +320,7 @@
       .oklchin.invalid{border-color:var(--chrome-bad);color:var(--chrome-bad)}
       .field-err{font-size:11.5px;color:var(--chrome-bad);font-weight:600;display:none;margin-top:6px}
       .field-err.show{display:block}
+      #fixLog{margin:6px 0 0;padding-left:18px;color:var(--chrome-mut);font-size:12.5px;display:grid;gap:3px}
     </style>
   </head>
   <body>
@@ -406,6 +407,10 @@
             <div class="seed-actions" style="margin-top:12px">
               <button class="btn" id="fixAllBtn">Fix all failing pairs</button>
             </div>
+            <div id="fixLogWrap" hidden>
+              <p class="guidance" style="margin:14px 0 0"><strong>Recent fixes</strong> — what actually moved, and whether it worked.</p>
+              <ul id="fixLog"></ul>
+            </div>
           </div>
         </div>
       </section>
@@ -442,7 +447,7 @@
           </div>
           <div class="card-body">
             <div class="audit-table" id="auditTable"></div>
-            <p class="foot-note">Ratios are WCAG 2.1 contrast; Lc is the APCA (WCAG 3 draft) lightness-contrast score — roughly, Lc 60+ suits body text, Lc 45+ suits large text and headlines. Fixes target the WCAG AA threshold for each pair.</p>
+            <p class="foot-note">Ratios are WCAG 2.1 contrast; Lc is the signed APCA (WCAG 3 draft) lightness-contrast score — positive for dark text on a light fill, negative for light text on a dark fill. Roughly, |Lc| 60+ suits body text, 45+ suits large text, headlines and UI components. A pair flagged <strong>APCA low</strong> passes WCAG but sits under the APCA level suggested for its use. Fixes target the WCAG AA threshold for each pair.</p>
           </div>
         </section>
 
@@ -1160,31 +1165,90 @@
         const fgRgb = oklchToRgb255(fgC), bgRgb = oklchToRgb255(bgC);
         const r = wcagRatio(fgRgb, bgRgb), lc = apcaLc(fgRgb, bgRgb);
         const pass = r >= p.min, aaa = r >= p.aaa;
+        const apcaLow = pass && Math.abs(lc) < (p.graphic ? 45 : 60);
         const row = document.createElement("div"); row.className = "audit-row";
         row.innerHTML = `
           <div class="pair-vis">
             <span class="pair-chip" style="background:${oklchCss(bgC)};color:${oklchCss(fgC)}">Ag</span>
             <span class="pair-names">${p.label}<small class="mono">--${kebab(p.fg)} on --${kebab(p.bg)} · needs ${p.min}:1${p.graphic ? " (UI)" : ""}</small></span>
           </div>
-          <div class="ratio mono">${r.toFixed(2)}:1<small>APCA Lc ${Math.abs(lc).toFixed(0)}</small></div>
+          <div class="ratio mono">${r.toFixed(2)}:1<small>APCA Lc ${lc.toFixed(0)}${apcaLow ? ` · <span style="color:var(--chrome-warn);font-weight:700">APCA low for ${p.graphic ? "UI" : "text"}</span>` : ""}</small></div>
           <span class="badge ${pass ? (aaa ? "pass" : "mid") : "fail"}">${pass ? (aaa ? "AAA" : "AA") : "Fail"}</span>
           <span class="fixcell">${pass ? "" : `<button class="btn small" data-fix="${i}">Fix</button>`}</span>`;
         table.appendChild(row);
       });
     }
-    function fixPair(i) { resolvePairIn(palettes[mode], PAIRS[i]); }
+    const ratioIn = (pal, q) => wcagRatio(oklchToRgb255(pal[q.fg]), oklchToRgb255(pal[q.bg]));
+    /* Cross-pair safe fix: run the standard resolve, then check EVERY pair —
+       not just same-foreground siblings. Moving a shared background token
+       (surface backs four pairs, bg backs nine) can silently break a pair
+       that was passing. If it did, retry with a foreground-only move and
+       keep whichever outcome solves the target with fewer breakages.
+       Returns the list of pairs that were passing before and fail now. */
+    function safeResolve(pal, p) {
+      const snap = JSON.parse(JSON.stringify(pal));
+      const before = PAIRS.map(q => ratioIn(pal, q));
+      const brokeIn = state => PAIRS.filter((q, i) => before[i] >= q.min && ratioIn(state, q) < q.min);
+      resolvePairIn(pal, p);
+      let broke = brokeIn(pal);
+      if (broke.length) {
+        const alt = JSON.parse(JSON.stringify(snap));
+        alt[p.fg].l = solveLightness(alt[p.fg], oklchToRgb255(alt[p.bg]), p.min);
+        const altBroke = brokeIn(alt);
+        if (altBroke.length < broke.length || (ratioIn(alt, p) >= p.min && ratioIn(pal, p) < p.min)) {
+          for (const k of ALL_KEYS) pal[k] = alt[k];
+          broke = altBroke;
+        }
+      }
+      return broke;
+    }
+    function fixPair(i, palObj) { safeResolve(palObj || palettes[mode], PAIRS[i]); }
+    /* Fix one pair and report the truth: whether it actually passes now,
+       which token's lightness moved (it is not always the one in the row —
+       the resolver may move the fill), and any collateral breakage. */
+    function fixPairDetailed(pal, p) {
+      const snap = JSON.parse(JSON.stringify(pal));
+      const broke = safeResolve(pal, p);
+      const rAfter = ratioIn(pal, p);
+      let moved = null;
+      for (const k of [p.fg, p.bg]) if (Math.abs(snap[k].l - pal[k].l) > 0.0005) moved = { key: k, from: snap[k].l, to: pal[k].l };
+      const solved = rAfter >= p.min;
+      let msg;
+      if (!solved && !moved) msg = `Could not fix “${p.label}” by lightness alone — still ${rAfter.toFixed(2)}:1 (needs ${p.min}:1). Try a hue or chroma change.`;
+      else if (!solved) msg = `Improved “${p.label}” to ${rAfter.toFixed(2)}:1, but it still needs ${p.min}:1 — lightness alone cannot get there. Try a hue or chroma change.`;
+      else {
+        msg = `Fixed “${p.label}” — ${moved ? TOKEN_DEFS[moved.key].name + " lightness " + moved.from.toFixed(3) + " → " + moved.to.toFixed(3) + " · " : ""}now ${rAfter.toFixed(2)}:1 ✓`;
+        if (broke.length) msg += ` — but ${broke.map(q => "“" + q.label + "”").join(", ")} now fail${broke.length > 1 ? "" : "s"}; fix ${broke.length > 1 ? "those" : "that"} next.`;
+      }
+      return { solved, msg };
+    }
+    function logFix(msg) {
+      const wrap = $("fixLogWrap"); if (!wrap) return;
+      wrap.hidden = false;
+      const li = document.createElement("li");
+      li.textContent = msg;
+      const list = $("fixLog");
+      list.prepend(li);
+      while (list.children.length > 8) list.lastElementChild.remove();
+    }
     function fixAll() {
+      const before = pairStats().fail;
+      if (!before) { toast("Nothing to fix — every pair already passes WCAG AA"); return; }
+      pushUndo();
       for (let pass = 0; pass < 4; pass++) {
         let dirty = false;
         PAIRS.forEach((p, i) => {
           const pal = palettes[mode];
-          if (wcagRatio(oklchToRgb255(pal[p.fg]), oklchToRgb255(pal[p.bg])) < p.min) { fixPair(i); dirty = true; }
+          if (ratioIn(pal, p) < p.min) { fixPair(i); dirty = true; }
         });
         if (!dirty) break;
       }
       refreshDerived(); renderEditor(); renderStepper();
       const st = pairStats();
-      toast(st.fail === 0 ? "All pairs now pass WCAG AA" : st.fail + " pair(s) still failing — the two colors may need a hue or chroma change, not just lightness");
+      const msg = st.fail === 0
+        ? `Fix all: repaired ${before} pair${before > 1 ? "s" : ""} — every pair now passes WCAG AA`
+        : `Fix all: repaired ${before - st.fail} of ${before} — ${st.fail} still failing; those need a hue or chroma change, not just lightness`;
+      toast(msg); logFix(msg);
     }
 
     /* ================= export ================= */
@@ -1213,6 +1277,7 @@
     /* ================= wiring ================= */
     function setMode(m) {
       mode = m;
+      auditView = m;
       $("modeLight").setAttribute("aria-pressed", m === "light");
       $("modeDark").setAttribute("aria-pressed", m === "dark");
       renderEditor(); refreshDerived(); renderStepper();
@@ -1296,11 +1361,18 @@
 
     $("auditTable").addEventListener("click", e => {
       const btn = e.target.closest("[data-fix]"); if (!btn) return;
-      fixPair(+btn.dataset.fix);
+      const i = +btn.dataset.fix;
+      pushUndo();
+      const rep = fixPairDetailed(palettes[auditMode()], PAIRS[i]);
       document.querySelectorAll(".token").forEach(r => syncRow(r, r.dataset.key));
       refreshDerived(); renderStepper();
       if (step === "review") renderEditor();
-      toast("Fixed: " + PAIRS[+btn.dataset.fix].label);
+      /* the re-render destroyed the clicked button — put focus back on the
+         same pair's new Fix button, or on its row if the pair now passes */
+      const newBtn = document.querySelector(`[data-fix="${i}"]`);
+      if (newBtn) newBtn.focus();
+      else { const row = $("auditTable").children[i]; if (row) { row.tabIndex = -1; row.focus(); } }
+      toast(rep.msg); logFix(rep.msg);
     });
     $("fixAllBtn").addEventListener("click", fixAll);
     $("fixAllBtn2").addEventListener("click", fixAll);
