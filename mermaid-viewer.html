@@ -238,13 +238,31 @@
 
       /* ---------- layout ---------- */
       main {
+        --split: 41.66;
         flex: 1;
         min-height: 0;
         display: grid;
-        grid-template-columns: minmax(330px, 5fr) 7fr;
-        gap: 12px;
+        grid-template-columns: minmax(240px, calc(var(--split) * 1%)) 12px minmax(240px, 1fr);
+        gap: 6px;
         padding: 12px;
       }
+      .splitter {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: col-resize;
+        touch-action: none;
+        border-radius: 6px;
+      }
+      .splitter::after {
+        content: "";
+        width: 4px;
+        height: 48px;
+        border-radius: 2px;
+        background: var(--line2);
+        transition: background .12s ease;
+      }
+      .splitter:hover::after, .splitter:focus-visible::after, .splitter.dragging::after { background: var(--acc); }
       .pane {
         background: var(--panel);
         border: 1px solid var(--line);
@@ -348,6 +366,8 @@
         caret-color: var(--acc);
       }
       #editor:focus { outline: none; }
+      #editor.wrap { white-space: pre-wrap; overflow-wrap: anywhere; }
+      .zoom-group button.font-btn { width: auto; padding: 0 8px; font-size: 12px; }
 
       /* ---------- preview ---------- */
       .zoom-group { display: inline-flex; align-items: center; gap: 2px; background: var(--chip); border: 1px solid var(--line); border-radius: 999px; padding: 2px; }
@@ -604,6 +624,7 @@
       /* ---------- responsive ---------- */
       @media (max-width: 900px) {
         main { grid-template-columns: 1fr; padding: 10px; gap: 10px; }
+        .splitter { display: none; }
         .tabs { display: inline-flex; }
         .pane { display: none; }
         .pane.active { display: flex; }
@@ -704,6 +725,11 @@
         <div class="pane-head">
           <span class="pane-title">Code</span>
           <span class="spacer"></span>
+          <button class="pill-toggle" id="wrap-toggle" type="button" aria-pressed="false"><span class="dot-sw"></span>Wrap</button>
+          <div class="zoom-group" role="group" aria-label="Editor font size">
+            <button type="button" class="font-btn" id="font-dec" aria-label="Decrease editor font size">A−</button>
+            <button type="button" class="font-btn" id="font-inc" aria-label="Increase editor font size">A+</button>
+          </div>
           <button class="small-btn" id="clear-btn" type="button">Clear</button>
           <button class="small-btn" id="render-btn" type="button" title="Render now (Ctrl/⌘ + Enter)">
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg>
@@ -716,6 +742,8 @@
           <textarea id="editor" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Mermaid diagram code" placeholder="Type Mermaid code here — e.g. flowchart TD"></textarea>
         </div>
       </section>
+
+      <div class="splitter" id="splitter" role="separator" aria-orientation="vertical" aria-label="Resize code and preview panes" aria-valuemin="15" aria-valuemax="80" tabindex="0" title="Drag to resize panes — double-click to reset"></div>
 
       <section class="pane" id="pane-preview" aria-label="Rendered diagram preview">
         <div class="pane-head">
@@ -1602,6 +1630,58 @@ Grid, Loss, 30` },
         resizeTimer = setTimeout(function () { if (state.autoFit && !state.viewTouched) fit(); }, 150);
       });
 
+      /* ---------------- pane splitter ---------------- */
+      var mainEl = document.querySelector("main");
+      var splitter = $("splitter");
+      state.splitPct = prefs.split || 41.66;
+      if (prefs.split) mainEl.style.setProperty("--split", state.splitPct);
+      splitter.setAttribute("aria-valuenow", String(Math.round(state.splitPct)));
+      function setSplit(pct) {
+        pct = Math.min(80, Math.max(15, pct));
+        state.splitPct = Math.round(pct * 10) / 10;
+        mainEl.style.setProperty("--split", state.splitPct);
+        splitter.setAttribute("aria-valuenow", String(Math.round(state.splitPct)));
+        if (state.autoFit && !state.viewTouched) fit();
+      }
+      var splitDragId = null;
+      splitter.addEventListener("pointerdown", function (e) {
+        splitDragId = e.pointerId;
+        splitter.setPointerCapture(e.pointerId);
+        splitter.classList.add("dragging");
+        e.preventDefault();
+      });
+      splitter.addEventListener("pointermove", function (e) {
+        if (splitDragId === null || e.pointerId !== splitDragId) return;
+        var r = mainEl.getBoundingClientRect();
+        setSplit((e.clientX - r.left) / r.width * 100);
+      });
+      function endSplitDrag() {
+        if (splitDragId === null) return;
+        splitDragId = null;
+        splitter.classList.remove("dragging");
+        prefs.split = state.splitPct;
+        savePrefs();
+      }
+      splitter.addEventListener("pointerup", endSplitDrag);
+      splitter.addEventListener("pointercancel", endSplitDrag);
+      splitter.addEventListener("keydown", function (e) {
+        var step = e.shiftKey ? 6 : 2, handled = true;
+        if (e.key === "ArrowLeft") setSplit(state.splitPct - step);
+        else if (e.key === "ArrowRight") setSplit(state.splitPct + step);
+        else if (e.key === "Home") setSplit(41.66);
+        else handled = false;
+        if (handled) {
+          e.preventDefault();
+          prefs.split = state.splitPct;
+          savePrefs();
+        }
+      });
+      splitter.addEventListener("dblclick", function () {
+        setSplit(41.66);
+        prefs.split = state.splitPct;
+        savePrefs();
+      });
+
       /* ---------------- editor ---------------- */
       function isUserWork() {
         return editor.value.trim() !== "" && editor.value !== state.pristineCode;
@@ -1658,6 +1738,29 @@ Grid, Loss, 30` },
       editor.addEventListener("scroll", function () {
         gutterInner.style.transform = "translateY(" + (-editor.scrollTop) + "px)";
       });
+
+      var wrapToggle = $("wrap-toggle");
+      function applyEditorPrefs() {
+        editor.classList.toggle("wrap", !!prefs.wrap);
+        editor.style.fontSize = prefs.fontSize + "px";
+        gutterInner.style.fontSize = prefs.fontSize + "px";
+        wrapToggle.classList.toggle("on", !!prefs.wrap);
+        wrapToggle.setAttribute("aria-pressed", String(!!prefs.wrap));
+      }
+      wrapToggle.addEventListener("click", function () {
+        prefs.wrap = !prefs.wrap;
+        savePrefs();
+        applyEditorPrefs();
+        editor.focus();
+      });
+      function setFontSize(px) {
+        prefs.fontSize = Math.min(18, Math.max(11, px));
+        savePrefs();
+        applyEditorPrefs();
+      }
+      $("font-dec").addEventListener("click", function () { setFontSize(prefs.fontSize - 1); });
+      $("font-inc").addEventListener("click", function () { setFontSize(prefs.fontSize + 1); });
+      applyEditorPrefs();
       editor.addEventListener("input", function () { updateMeta(); scheduleRender(); persistDraft(); });
       editor.addEventListener("keydown", function (e) {
         if (e.key === "Tab") {
