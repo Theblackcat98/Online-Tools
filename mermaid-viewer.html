@@ -1857,7 +1857,7 @@ Grid, Loss, 30` },
         savePrefs();
         initMermaid();
         render();
-        galleryBuilt = false;
+        rerenderGallery();
       });
 
       /* ---------------- gallery overlay ---------------- */
@@ -1865,6 +1865,12 @@ Grid, Loss, 30` },
       var gallerySearch = $("gallery-search"), galleryChips = $("gallery-chips");
       var galleryEmpty = $("gallery-empty"), galleryBtn = $("gallery-btn");
       var galleryBuilt = false, gallerySeq = 0, galleryCat = "all";
+      var galleryRendered = {}, galleryChain = Promise.resolve(), galleryObserver = null;
+
+      function findGalleryItem(id) {
+        for (var i = 0; i < GALLERY.length; i++) if (GALLERY[i].id === id) return GALLERY[i];
+        return null;
+      }
 
       function catLabel(id) {
         for (var i = 0; i < GALLERY_CATS.length; i++) if (GALLERY_CATS[i].id === id) return GALLERY_CATS[i].label;
@@ -1885,7 +1891,7 @@ Grid, Loss, 30` },
       function buildGalleryCards() {
         galleryGrid.innerHTML = GALLERY.map(function (item, i) {
           var search = (item.name + " " + item.blurb + " " + item.uses.join(" ")).toLowerCase();
-          return '<article class="g-card" data-gsearch="' + escHtml(search) + '" data-gcat="' + item.category + '">' +
+          return '<article class="g-card" data-gid="' + item.id + '" data-gsearch="' + escHtml(search) + '" data-gcat="' + item.category + '">' +
             '<div class="g-card-head"><span class="g-num">' + String(i + 1).padStart(2, "0") + '</span>' +
             '<span class="g-name">' + escHtml(item.name) + '</span>' +
             '<span class="g-cat">' + escHtml(catLabel(item.category)) + "</span></div>" +
@@ -1902,6 +1908,33 @@ Grid, Loss, 30` },
         }).join("");
       }
 
+      function queueGalleryRender(item) {
+        if (galleryRendered[item.id]) return;
+        galleryRendered[item.id] = true;
+        var seq = gallerySeq;
+        galleryChain = galleryChain.then(function () {
+          if (seq !== gallerySeq) return;
+          var el = $("g-stage-" + item.id);
+          if (!el) return;
+          return window.mermaid.render("gal-" + seq + "-" + item.id, item.code).then(function (res) {
+            if (seq !== gallerySeq) return;
+            el.innerHTML = res.svg;
+            if (typeof res.bindFunctions === "function") res.bindFunctions(el);
+            var svg = el.querySelector("svg");
+            if (svg) {
+              svg.removeAttribute("height");
+              svg.style.maxWidth = "100%";
+              svg.style.height = "auto";
+              svg.setAttribute("role", "img");
+              svg.setAttribute("aria-label", item.name + " example");
+            }
+          }).catch(function (err) {
+            if (seq !== gallerySeq) return;
+            el.innerHTML = '<span class="g-render-err">This example didn\'t render under Mermaid ' + PINNED_VERSION + " — open it in the editor to inspect the source.</span>";
+          });
+        });
+      }
+
       function renderGalleryDiagrams() {
         if (!mermaidReady) {
           GALLERY.forEach(function (item) {
@@ -1910,31 +1943,30 @@ Grid, Loss, 30` },
           });
           return;
         }
-        var seq = ++gallerySeq;
-        var chain = Promise.resolve();
-        GALLERY.forEach(function (item, i) {
-          chain = chain.then(function () {
-            if (seq !== gallerySeq) return;
-            var el = $("g-stage-" + item.id);
-            if (!el) return;
-            return window.mermaid.render("gal-" + seq + "-" + i, item.code).then(function (res) {
-              if (seq !== gallerySeq) return;
-              el.innerHTML = res.svg;
-              if (typeof res.bindFunctions === "function") res.bindFunctions(el);
-              var svg = el.querySelector("svg");
-              if (svg) {
-                svg.removeAttribute("height");
-                svg.style.maxWidth = "100%";
-                svg.style.height = "auto";
-                svg.setAttribute("role", "img");
-                svg.setAttribute("aria-label", item.name + " example");
-              }
-            }).catch(function (err) {
-              if (seq !== gallerySeq) return;
-              var msg = (err && err.message) ? err.message : String(err);
-              el.innerHTML = '<span class="g-render-err">This example didn\'t render under Mermaid ' + PINNED_VERSION + " — open it in the editor to inspect the source.</span>";
+        if ("IntersectionObserver" in window) {
+          galleryObserver = new IntersectionObserver(function (entries) {
+            entries.forEach(function (en) {
+              if (!en.isIntersecting) return;
+              var item = findGalleryItem(en.target.getAttribute("data-gid"));
+              if (item) queueGalleryRender(item);
+              galleryObserver.unobserve(en.target);
             });
+          }, { root: $("gallery-scroll"), rootMargin: "600px" });
+          galleryGrid.querySelectorAll(".g-card").forEach(function (card) {
+            galleryObserver.observe(card);
           });
+        } else {
+          GALLERY.forEach(queueGalleryRender);
+        }
+      }
+
+      function rerenderGallery() {
+        if (!galleryBuilt || !mermaidReady) return;
+        gallerySeq++;
+        Object.keys(galleryRendered).forEach(function (id) {
+          var item = findGalleryItem(id);
+          delete galleryRendered[id];
+          if (item) queueGalleryRender(item);
         });
       }
 
