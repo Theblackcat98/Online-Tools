@@ -266,6 +266,38 @@
         will-change: transform;
       }
       .gutter-inner span { display: block; }
+      .gutter-inner span.err-line {
+        background: var(--err-bg);
+        color: var(--err-ink);
+        font-weight: 700;
+        border-radius: 0 4px 4px 0;
+        box-shadow: inset 2px 0 0 var(--err-ink);
+      }
+      .err-strip {
+        display: block;
+        width: calc(100% - 24px);
+        margin: 10px 12px 0;
+        background: var(--err-bg);
+        border: 1px solid var(--err-line);
+        color: var(--err-ink);
+        border-radius: 10px;
+        padding: 7px 12px;
+        font-size: 12.5px;
+        font-weight: 600;
+        text-align: left;
+        cursor: pointer;
+        flex: none;
+      }
+      .err-strip[hidden] { display: none; }
+      .tab-badge {
+        display: none;
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        background: #d64541;
+        margin-left: 6px;
+        vertical-align: 1px;
+      }
+      .tab-badge.show { display: inline-block; }
       #editor {
         flex: 1;
         min-width: 0;
@@ -576,7 +608,7 @@
 
       <div class="tabs" role="tablist" aria-label="Pane">
         <button id="tab-code" class="on" role="tab" aria-selected="true">Code</button>
-        <button id="tab-preview" role="tab" aria-selected="false">Preview</button>
+        <button id="tab-preview" role="tab" aria-selected="false">Preview<span class="tab-badge" id="tab-badge"></span></button>
       </div>
 
       <span class="spacer"></span>
@@ -627,6 +659,7 @@
             Render
           </button>
         </div>
+        <button class="err-strip" id="err-strip" type="button" hidden></button>
         <div class="editor-wrap">
           <div class="gutter" aria-hidden="true"><div class="gutter-inner" id="gutter-inner"></div></div>
           <textarea id="editor" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Mermaid diagram code" placeholder="Type Mermaid code here — e.g. flowchart TD"></textarea>
@@ -653,7 +686,7 @@
             <span class="btn-text">Fullscreen</span>
           </button>
         </div>
-        <div class="error-bar" id="error-bar">
+        <div class="error-bar" id="error-bar" aria-live="polite">
           <div class="err-title">Syntax error</div>
           <pre id="error-text"></pre>
         </div>
@@ -1203,6 +1236,7 @@ Grid, Loss, 30` },
       var docStats = $("doc-stats"), zoomPct = $("zoom-pct");
       var paneCode = $("pane-code"), panePreview = $("pane-preview");
       var tabCode = $("tab-code"), tabPreview = $("tab-preview");
+      var errStrip = $("err-strip"), tabBadge = $("tab-badge");
       var exportMenu = $("export-menu"), exportBtn = $("export-btn");
       var toastEl = $("toast");
       var confirmOverlay = $("confirm-overlay");
@@ -1322,6 +1356,28 @@ Grid, Loss, 30` },
         });
       }
 
+      function parseErrorLine(msg) {
+        var m = /line\s+(\d+)/i.exec(msg || "");
+        return m ? parseInt(m[1], 10) : 0;
+      }
+      function scrollToErrorLine(n) {
+        if (!n) return;
+        var cs = getComputedStyle(editor);
+        var lh = parseFloat(cs.lineHeight);
+        if (!lh || isNaN(lh)) lh = (parseFloat(cs.fontSize) || 13) * 1.55;
+        editor.scrollTop = Math.max(0, (n - 1) * lh - editor.clientHeight / 3);
+      }
+      function clearErrorUI() {
+        state.errorLine = 0;
+        errorBar.classList.remove("show");
+        errStrip.hidden = true;
+        tabBadge.classList.remove("show");
+      }
+      errStrip.addEventListener("click", function () {
+        if (window.matchMedia("(max-width: 900px)").matches) showPane("preview");
+        else { scrollToErrorLine(state.errorLine); editor.focus(); }
+      });
+
       function render() {
         if (!mermaidReady) {
           setStatus("err", "Mermaid failed to load — check your connection and reload.");
@@ -1331,8 +1387,9 @@ Grid, Loss, 30` },
         if (!code.trim()) {
           canvas.innerHTML = "";
           state.lastSvg = ""; state.natW = 0; state.natH = 0;
+          state.renderedCode = "";
           stageEmpty.classList.add("show");
-          errorBar.classList.remove("show");
+          clearErrorUI();
           setStatus("", "Empty — write some Mermaid code");
           return;
         }
@@ -1354,7 +1411,9 @@ Grid, Loss, 30` },
             svg.style.maxWidth = "none";
           }
           stageEmpty.classList.remove("show");
-          errorBar.classList.remove("show");
+          state.renderedCode = code;
+          clearErrorUI();
+          updateMeta();
           setStatus("ok", "Rendered");
           if (state.autoFit) fit();
           else applyTransform();
@@ -1363,6 +1422,14 @@ Grid, Loss, 30` },
           var msg = (err && err.message) ? err.message : String(err);
           errorText.textContent = msg.length > 900 ? msg.slice(0, 900) + "…" : msg;
           errorBar.classList.add("show");
+          state.errorLine = parseErrorLine(msg);
+          errStrip.textContent = state.errorLine
+            ? "Syntax error on line " + state.errorLine + " — full message in the Preview pane"
+            : "Syntax error — full message in the Preview pane";
+          errStrip.hidden = false;
+          if (!panePreview.classList.contains("active")) tabBadge.classList.add("show");
+          updateMeta();
+          scrollToErrorLine(state.errorLine);
           setStatus("err", "Syntax error — last good diagram kept");
         });
       }
@@ -1577,7 +1644,10 @@ Grid, Loss, 30` },
         tabPreview.classList.toggle("on", !code);
         tabCode.setAttribute("aria-selected", String(code));
         tabPreview.setAttribute("aria-selected", String(!code));
-        if (!code) requestAnimationFrame(function () { if (state.autoFit) fit(); else applyTransform(); });
+        if (!code) {
+          tabBadge.classList.remove("show");
+          requestAnimationFrame(function () { if (state.autoFit && !state.viewTouched) fit(); else applyTransform(); });
+        }
       }
       tabCode.addEventListener("click", function () { showPane("code"); });
       tabPreview.addEventListener("click", function () { showPane("preview"); });
