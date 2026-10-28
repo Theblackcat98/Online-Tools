@@ -292,6 +292,65 @@
         .mini-cap{display:none}
         .mini-mode{padding:5px 10px}
       }
+
+      /* ---------- additions: persistence / undo / seed sharing ---------- */
+      .save-note{font-size:12px;color:var(--chrome-faint);font-weight:600}
+      .seed-lab{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px}
+      .seed-lab label{margin-bottom:0}
+      .seed-valwrap{display:inline-flex;align-items:baseline;gap:2px;color:var(--chrome-mut);font-size:13px}
+      input.numin-seed{
+        background:transparent;border:1px solid transparent;border-radius:6px;color:var(--chrome-ink);
+        font-size:13px;padding:2px 3px;text-align:right;width:56px;
+      }
+      input.numin-seed:hover{border-color:var(--chrome-line2)}
+      input.numin-seed:focus{border-color:var(--chrome-acc);background:var(--chrome-panel);outline:none}
+      .preset[aria-pressed="true"]{border-color:var(--chrome-acc);box-shadow:inset 0 0 0 1px var(--chrome-acc)}
+
+      /* ---------- additions: exact value entry in token rows ---------- */
+      input.numin{
+        background:transparent;border:1px solid transparent;border-radius:6px;
+        padding:2px 3px;width:100%;min-width:0;
+      }
+      input.numin:hover{border-color:var(--chrome-line2)}
+      input.numin:focus{border-color:var(--chrome-acc);background:var(--chrome-panel);color:var(--chrome-ink);outline:none}
+      .oklchin{
+        width:100%;margin-top:8px;font-size:12px;padding:6px 8px;
+        border:1px solid var(--chrome-line2);border-radius:8px;background:var(--chrome-panel);color:var(--chrome-ink);
+      }
+      .oklchin.invalid{border-color:var(--chrome-bad);color:var(--chrome-bad)}
+      .field-err{font-size:11.5px;color:var(--chrome-bad);font-weight:600;display:none;margin-top:6px}
+      .field-err.show{display:block}
+      #fixLog{margin:6px 0 0;padding-left:18px;color:var(--chrome-mut);font-size:12.5px;display:grid;gap:3px}
+
+      /* ---------- additions: step nav / compare strip / both-mode stats ---------- */
+      .step-nav{display:flex;justify-content:space-between;gap:10px;margin-top:16px}
+      .step-nav .spacer{flex:1}
+      .compare-strip{display:grid;gap:6px;margin-bottom:12px}
+      .cmp-row{
+        display:flex;align-items:center;gap:7px;width:100%;text-align:left;
+        border:1px solid var(--chrome-line);border-radius:10px;background:var(--chrome-panel2);
+        padding:6px 10px;color:var(--chrome-ink);
+      }
+      .cmp-row[aria-pressed="true"]{border-color:var(--chrome-acc)}
+      .cmp-mode{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--chrome-mut);width:44px;flex:none}
+      .cmp-sw{width:20px;height:20px;border-radius:6px;border:1px solid var(--chrome-line2);flex:none}
+      .cmp-edit{margin-left:auto;font-size:11px;font-weight:700;color:var(--chrome-faint);flex:none}
+      .cmp-row[aria-pressed="true"] .cmp-edit{color:var(--chrome-acc)}
+      .bm-row{display:flex;align-items:center;gap:10px;border:1px solid var(--chrome-line);border-radius:10px;background:var(--chrome-panel2);padding:9px 12px;margin-top:8px;font-size:13px}
+      .bm-row .grow{flex:1;min-width:0}
+      @media (max-width:1020px){
+        .stepper{position:sticky;top:var(--topbar-h,57px);z-index:35;background:var(--chrome-bg);padding-bottom:8px}
+      }
+      @media (pointer:coarse){
+        .btn.small{min-height:40px;padding:8px 13px}
+        .seg button{min-height:40px;padding:9px 14px}
+        .preset{min-height:40px}
+        .step{min-height:40px}
+        input[type="range"].tok::-webkit-slider-thumb{width:26px;height:26px}
+        input[type="range"].tok::-moz-range-thumb{width:24px;height:24px}
+        .hue-track::-webkit-slider-thumb{width:28px;height:28px}
+        .hue-track::-moz-range-thumb{width:26px;height:26px}
+      }
     </style>
   </head>
   <body>
@@ -306,6 +365,10 @@
         <button id="modeLight" aria-pressed="true">Light</button>
         <button id="modeDark" aria-pressed="false">Dark</button>
       </div>
+      <button class="btn small" id="undoBtn" disabled title="Undo the last change (Ctrl+Z)">Undo</button>
+      <button class="btn small" id="redoBtn" disabled title="Redo (Ctrl+Shift+Z)">Redo</button>
+      <span class="save-note" id="saveNote" role="status">Autosaved in this browser</span>
+      <button class="btn small" id="resetBtn" title="Clear the saved work and restore the default palettes">Reset defaults</button>
       <button class="btn" id="diceBtn" title="Random seed palette">Random seed</button>
       <button class="btn primary" id="exportJump">Export CSS</button>
       <div class="mobile-bar" id="mobileBar">
@@ -330,11 +393,11 @@
           <!-- seed controls -->
           <div id="seedPanel" class="seed-grid" hidden>
             <div class="seed-row">
-              <label for="seedHue">Brand hue — <span class="seed-val mono" id="seedHueVal"></span></label>
+              <div class="seed-lab"><label for="seedHue">Brand hue</label><span class="seed-valwrap"><input class="mono numin-seed" id="seedHueVal" inputmode="numeric" aria-label="Brand hue in degrees" /><span aria-hidden="true">°</span></span></div>
               <input type="range" class="hue-track" id="seedHue" min="0" max="360" step="1" value="18" />
             </div>
             <div class="seed-row">
-              <label for="seedSat">Color intensity — <span class="seed-val mono" id="seedSatVal"></span></label>
+              <div class="seed-lab"><label for="seedSat">Color intensity</label><span class="seed-valwrap"><input class="mono numin-seed" id="seedSatVal" inputmode="numeric" aria-label="Color intensity in percent" /><span aria-hidden="true">%</span></span></div>
               <input type="range" class="tok" id="seedSat" min="0" max="100" step="1" value="62" style="background:linear-gradient(90deg,#9a9a9e,#d84f2f)" />
             </div>
             <div class="seed-row">
@@ -354,8 +417,10 @@
             <div class="seed-actions">
               <button class="btn primary" id="generateBtn">Generate both palettes</button>
               <button class="btn" id="deriveDarkBtn" title="Build the dark palette by inverting the lightness of your light palette">Derive dark from light</button>
+              <button class="btn" id="copySeedLinkBtn" title="Copy a link that recreates this seed from scratch">Copy seed link</button>
             </div>
-            <p class="foot-note">Generating rebuilds every token in <strong>both</strong> modes from the seed, using OKLCH so steps stay perceptually even. Fine-tune individual tokens in the steps that follow — nothing here is locked in.</p>
+            <p class="foot-note mono" id="seedSummary" style="margin-top:10px"></p>
+            <p class="foot-note">Generating rebuilds every token in <strong>both</strong> modes from the seed, using OKLCH so steps stay perceptually even. Fine-tune individual tokens in the steps that follow — nothing here is locked in. Every rebuild can be undone (Ctrl+Z), and your work autosaves to this browser as you go.</p>
           </div>
 
           <!-- token editor -->
@@ -363,15 +428,28 @@
 
           <!-- review panel -->
           <div id="reviewPanel" hidden>
+            <p class="guidance" id="statModeLbl" style="margin:0 0 8px"></p>
             <div class="stat-row">
               <div class="stat"><div class="big" id="statAA">–</div><div class="lbl">pairs pass WCAG AA</div></div>
               <div class="stat"><div class="big" id="statAAA">–</div><div class="lbl">pairs pass WCAG AAA</div></div>
               <div class="stat"><div class="big" id="statFix">–</div><div class="lbl">pairs need a fix</div></div>
             </div>
+            <div id="bothModes"></div>
             <p class="guidance" style="margin-top:12px">The audit on the right checks the palette you are editing (light or dark) pair by pair. <strong>Fix</strong> adjusts OKLCH lightness only — hue and chroma stay yours. It moves the foreground first; if that would break a sibling pair (button text must pass on the hover fill too), it moves the fill instead. When everything passes, export the tokens below the audit.</p>
             <div class="seed-actions" style="margin-top:12px">
               <button class="btn" id="fixAllBtn">Fix all failing pairs</button>
             </div>
+            <div id="fixLogWrap" hidden>
+              <p class="guidance" style="margin:14px 0 0"><strong>Recent fixes</strong> — what actually moved, and whether it worked.</p>
+              <ul id="fixLog"></ul>
+            </div>
+          </div>
+
+          <!-- step navigation -->
+          <div class="step-nav">
+            <button class="btn" id="prevStepBtn" type="button"></button>
+            <span class="spacer"></span>
+            <button class="btn primary" id="nextStepBtn" type="button"></button>
           </div>
         </div>
       </section>
@@ -386,6 +464,7 @@
             <span class="guidance" style="margin:0">Hover a token to spotlight where it is used.</span>
           </div>
           <div class="card-body">
+            <div class="compare-strip" id="compareStrip" aria-label="Key colors of both palettes — activate a row to edit that palette"></div>
             <div class="preview-frame" id="previewFrame">
               <div class="preview-chrome">
                 <span class="dot" style="background:#e0654a" aria-hidden="true"></span>
@@ -404,11 +483,15 @@
             <h2 class="card-title">Contrast audit</h2>
             <span class="guidance" style="margin:0" id="auditModeLabel"></span>
             <span style="flex:1"></span>
+            <div class="seg" role="group" aria-label="Palette shown in the audit">
+              <button id="auditLight" aria-pressed="true">Light</button>
+              <button id="auditDark" aria-pressed="false">Dark</button>
+            </div>
             <button class="btn small" id="fixAllBtn2">Fix all</button>
           </div>
           <div class="card-body">
             <div class="audit-table" id="auditTable"></div>
-            <p class="foot-note">Ratios are WCAG 2.1 contrast; Lc is the APCA (WCAG 3 draft) lightness-contrast score — roughly, Lc 60+ suits body text, Lc 45+ suits large text and headlines. Fixes target the WCAG AA threshold for each pair.</p>
+            <p class="foot-note">Ratios are WCAG 2.1 contrast; Lc is the signed APCA (WCAG 3 draft) lightness-contrast score — positive for dark text on a light fill, negative for light text on a dark fill. Roughly, |Lc| 60+ suits body text, 45+ suits large text, headlines and UI components. A pair flagged <strong>APCA low</strong> passes WCAG but sits under the APCA level suggested for its use. Fixes target the WCAG AA threshold for each pair.</p>
           </div>
         </section>
 
@@ -788,22 +871,148 @@
     const $ = id => document.getElementById(id);
     const seedEls = { hue: $("seedHue"), sat: $("seedSat"), harmony: $("seedHarmony") };
 
+    /* ================= persistence + undo =================
+       State (palettes, seed, mode, step, export options) autosaves to
+       localStorage on every change and is restored on load. A shareable
+       ?seed=hue,sat,harmony URL parameter recreates a seed from scratch —
+       but only when it differs from the saved session's seed, so the
+       ?seed= that saveState keeps in the URL never wipes edits on reload.
+       Undo is a snapshot stack
+       of {palettes, seed}; discrete actions push before mutating, and
+       continuous controls (sliders, color picker, text fields) capture a
+       snapshot when a gesture/focus session begins and push it when the
+       gesture commits a different value. */
+    const STORE_KEY = "ctw-state-v1";
+    let undoStack = [], redoStack = [];
+    let auditView = "light";
+    const auditMode = () => auditView;
+    function currentSeed() { return { hue: +seedEls.hue.value, sat: +seedEls.sat.value, harmony: +seedEls.harmony.value }; }
+    function snapshot() { return JSON.stringify({ palettes, seed: currentSeed() }); }
+    function updateUndoUI() { $("undoBtn").disabled = !undoStack.length; $("redoBtn").disabled = !redoStack.length; }
+    function pushUndo() {
+      const s = snapshot();
+      if (undoStack[undoStack.length - 1] === s) return;
+      undoStack.push(s); if (undoStack.length > 60) undoStack.shift();
+      redoStack = []; updateUndoUI();
+    }
+    let gestureSnap = null;
+    function gestureBegin() { if (!gestureSnap) gestureSnap = snapshot(); }
+    function gestureEnd() {
+      if (!gestureSnap) return;
+      if (gestureSnap !== snapshot()) {
+        undoStack.push(gestureSnap); if (undoStack.length > 60) undoStack.shift();
+        redoStack = []; updateUndoUI();
+      }
+      gestureSnap = null;
+    }
+    function applySnapshot(s) {
+      const d = JSON.parse(s);
+      palettes = d.palettes;
+      seedEls.hue.value = d.seed.hue; seedEls.sat.value = d.seed.sat; seedEls.harmony.value = String(d.seed.harmony);
+      updateSeedLabels(); renderEditor(); refreshDerived(); renderStepper();
+    }
+    function undo() { if (!undoStack.length) return; redoStack.push(snapshot()); applySnapshot(undoStack.pop()); updateUndoUI(); toast("Undone"); }
+    function redo() { if (!redoStack.length) return; undoStack.push(snapshot()); applySnapshot(redoStack.pop()); updateUndoUI(); toast("Redone"); }
+
+    let savedTimer = null;
+    function flashSaved() {
+      const el = $("saveNote"); if (!el) return;
+      el.textContent = "Saved ✓";
+      clearTimeout(savedTimer);
+      savedTimer = setTimeout(() => { el.textContent = "Autosaved in this browser"; }, 1800);
+    }
+    let lastSeedQs = null;
+    function saveState() {
+      try { localStorage.setItem(STORE_KEY, JSON.stringify({ v: 1, palettes, mode, step, exportState, seed: currentSeed() })); flashSaved(); } catch (e) {}
+      const s = currentSeed(), qs = s.hue + "," + s.sat + "," + s.harmony;
+      if (qs !== lastSeedQs) {
+        lastSeedQs = qs;
+        try { const u = new URL(location.href); u.searchParams.set("seed", qs); history.replaceState(null, "", u); } catch (e) {}
+      }
+    }
+    function sanitizePalettes(raw) {
+      const fallback = generatePalettes(18, 62, 180);
+      const out = {};
+      for (const m of ["light", "dark"]) {
+        out[m] = {};
+        for (const k of ALL_KEYS) {
+          const c = raw && raw[m] && raw[m][k];
+          out[m][k] = c && isFinite(c.l) && isFinite(c.c) && isFinite(c.h)
+            ? { l: clamp(+c.l, 0, 1), c: clamp(+c.c, 0, 0.4), h: ((+c.h % 360) + 360) % 360 }
+            : { ...fallback[m][k] };
+        }
+      }
+      return out;
+    }
+    function seedFromUrl() {
+      try {
+        const s = new URLSearchParams(location.search).get("seed");
+        if (!s) return null;
+        const parts = s.split(",").map(Number);
+        if (parts.length !== 3 || parts.some(isNaN)) return null;
+        return { hue: clamp(Math.round(parts[0]), 0, 360), sat: clamp(Math.round(parts[1]), 0, 100), harmony: [0, 32, 120, 150, 180].includes(parts[2]) ? parts[2] : 180 };
+      } catch (e) { return null; }
+    }
+    function syncExportSegs() {
+      $("fmtCss").setAttribute("aria-pressed", exportState.format === "css");
+      $("fmtJson").setAttribute("aria-pressed", exportState.format === "json");
+      $("notOklch").setAttribute("aria-pressed", exportState.notation === "oklch");
+      $("notHex").setAttribute("aria-pressed", exportState.notation === "hex");
+      $("darkAttr").setAttribute("aria-pressed", exportState.darkVia === "attr");
+      $("darkMedia").setAttribute("aria-pressed", exportState.darkVia === "media");
+    }
+    function restoreState() {
+      let fromUrl = false, data = null;
+      try {
+        data = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+        if (data) {
+          if (data.palettes) palettes = sanitizePalettes(data.palettes);
+          if (data.mode === "dark" || data.mode === "light") { mode = data.mode; auditView = data.mode; }
+          if (data.step && STEPS.some(s => s.id === data.step)) step = data.step;
+          if (data.exportState) for (const k of ["format", "notation", "darkVia"]) if (data.exportState[k]) exportState[k] = data.exportState[k];
+          if (data.seed) {
+            seedEls.hue.value = clamp(+data.seed.hue || 18, 0, 360);
+            seedEls.sat.value = clamp(+data.seed.sat || 62, 0, 100);
+            seedEls.harmony.value = String(data.seed.harmony ?? 180);
+          }
+        }
+      } catch (e) {}
+      const us = seedFromUrl();
+      if (us) {
+        /* A seed link only (re)generates when it brings a DIFFERENT seed
+           than the saved session. saveState keeps ?seed= in the URL, so a
+           plain reload also carries the parameter — with an equal seed it
+           is the same session continuing, and the saved palettes win. */
+        const savedSeed = data && data.seed;
+        const sameSeed = savedSeed && +savedSeed.hue === us.hue && +savedSeed.sat === us.sat && +savedSeed.harmony === us.harmony;
+        if (!sameSeed) {
+          fromUrl = true;
+          seedEls.hue.value = us.hue; seedEls.sat.value = us.sat; seedEls.harmony.value = String(us.harmony);
+          palettes = generatePalettes(us.hue, us.sat, us.harmony);
+        }
+      }
+      $("modeLight").setAttribute("aria-pressed", mode === "light");
+      $("modeDark").setAttribute("aria-pressed", mode === "dark");
+      syncExportSegs();
+      return fromUrl;
+    }
+
     function toast(msg) {
       const t = $("toast"); t.textContent = msg; t.classList.add("show");
       clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 2200);
     }
 
     /* ================= stepper ================= */
-    function pairStats() {
-      const pal = palettes[mode]; let aa = 0, aaa = 0;
+    function pairStats(m = mode) {
+      const pal = palettes[m]; let aa = 0, aaa = 0;
       for (const p of PAIRS) {
         const r = wcagRatio(oklchToRgb255(pal[p.fg]), oklchToRgb255(pal[p.bg]));
         if (r >= p.min) aa++; if (r >= p.aaa) aaa++;
       }
       return { aa, aaa, fail: PAIRS.length - aa, total: PAIRS.length };
     }
-    function groupFails(groupId) {
-      const pal = palettes[mode], keys = new Set(GROUPS[groupId].tokens); let n = 0;
+    function groupFails(groupId, m = mode) {
+      const pal = palettes[m], keys = new Set(GROUPS[groupId].tokens); let n = 0;
       for (const p of PAIRS) if ((keys.has(p.fg) || keys.has(p.bg)) && wcagRatio(oklchToRgb255(pal[p.fg]), oklchToRgb255(pal[p.bg])) < p.min) n++;
       return n;
     }
@@ -813,10 +1022,13 @@
         const b = document.createElement("button");
         b.className = "step"; b.setAttribute("aria-current", step === s.id ? "step" : "false");
         let flag = "";
-        if (s.id === "review") { const st = pairStats(); flag = st.fail ? `<span class="flag">${st.fail} failing</span>` : `<span class="flag ok">all pass</span>`; }
+        if (s.id === "review") {
+          const lf = pairStats("light").fail, df = pairStats("dark").fail;
+          flag = (lf + df) === 0 ? `<span class="flag ok">all pass</span>` : `<span class="flag">${[lf ? "Light " + lf : "", df ? "Dark " + df : ""].filter(Boolean).join(" · ")} failing</span>`;
+        }
         else if (GROUPS[s.id]) { const f = groupFails(s.id); if (f) flag = `<span class="flag">${f} issue${f > 1 ? "s" : ""}</span>`; }
         b.innerHTML = `<span class="n">${i + 1}</span>${s.title} ${flag}`;
-        b.addEventListener("click", () => { step = s.id; renderEditor(); renderStepper(); });
+        b.addEventListener("click", () => { step = s.id; renderEditor(); renderStepper(); saveState(); });
         nav.appendChild(b);
       });
     }
@@ -827,6 +1039,14 @@
       if (kind === "l") return `linear-gradient(90deg, ${g(0, col.c, col.h)}, ${g(0.5, col.c, col.h)}, ${g(1, col.c, col.h)})`;
       if (kind === "c") return `linear-gradient(90deg, ${g(col.l, 0, col.h)}, ${g(col.l, 0.37, col.h)})`;
       return "linear-gradient(90deg,oklch(.62 .17 0),oklch(.62 .17 60),oklch(.62 .17 120),oklch(.62 .17 180),oklch(.62 .17 240),oklch(.62 .17 300),oklch(.62 .17 360))";
+    }
+    function parseOklchText(text) {
+      const m = /^\s*oklch\(\s*([\d.]+)(%?)\s+([\d.]+)\s+(-?[\d.]+)(?:deg)?\s*\)\s*$/i.exec(text);
+      if (!m) return null;
+      let l = parseFloat(m[1]); if (m[2] === "%") l = l / 100;
+      const c = parseFloat(m[3]), h = parseFloat(m[4]);
+      if ([l, c, h].some(isNaN)) return null;
+      return { l: clamp(l, 0, 1), c: clamp(c, 0, 0.4), h: ((h % 360) + 360) % 360 };
     }
     function buildTokenRow(key) {
       const def = TOKEN_DEFS[key];
@@ -841,34 +1061,102 @@
             <div class="token-desc">${def.desc}</div>
           </div>
           <input class="hexin mono" spellcheck="false" aria-label="${def.name} hex value">
+          <button class="btn small token-reset" type="button" title="Reset ${def.name} to the value generated from the current seed">Reset</button>
         </div>
         <div class="sliders">
           ${["l", "c", "h"].map(ch => `
           <div class="slider-row">
             <span class="lab">${ch.toUpperCase()}</span>
             <input type="range" class="tok" data-ch="${ch}" min="0" max="${ch === "l" ? 1000 : ch === "c" ? 370 : 360}" step="1" aria-label="${def.name} ${ch === "l" ? "lightness" : ch === "c" ? "chroma" : "hue"}">
-            <span class="val mono" data-val="${ch}"></span>
+            <input class="val mono numin" data-val="${ch}" inputmode="decimal" aria-label="${def.name} ${ch === "l" ? "lightness" : ch === "c" ? "chroma" : "hue"} — type an exact value">
           </div>`).join("")}
+          <input class="oklchin mono" spellcheck="false" placeholder="oklch(0.650 0.150 25.0)" aria-label="${def.name} OKLCH value — paste an oklch() color to set it exactly, including colors outside the sRGB gamut">
+          <div class="field-err" role="alert"></div>
           <div class="gamut-note">Outside the sRGB gamut — displayed and exported with chroma reduced to the closest displayable color.</div>
         </div>`;
       const col = () => palettes[mode][key];
-      row.querySelector('input[type="color"]').addEventListener("input", e => {
+      const errEl = row.querySelector(".field-err");
+      const showErr = msg => { errEl.textContent = msg || ""; errEl.classList.toggle("show", !!msg); };
+      const colorIn = row.querySelector('input[type="color"]');
+      colorIn.addEventListener("pointerdown", gestureBegin);
+      colorIn.addEventListener("focus", gestureBegin);
+      colorIn.addEventListener("change", gestureEnd);
+      colorIn.addEventListener("input", e => {
         const rgb = hexToRgb255(e.target.value); if (!rgb) return;
         palettes[mode][key] = rgb255ToOklch(rgb); syncRow(row, key); refreshDerived();
       });
       const hexIn = row.querySelector(".hexin");
+      hexIn.addEventListener("focus", gestureBegin);
+      hexIn.addEventListener("blur", gestureEnd);
+      hexIn.addEventListener("input", () => {
+        const raw = hexIn.value.trim(), digits = raw.replace(/^#/, "");
+        const rgb = hexToRgb255(raw);
+        if (rgb && digits.length === 6) {
+          /* complete hex commits live; a 3-digit shorthand still commits on blur/Enter so mid-typing states don't hijack the token */
+          hexIn.classList.remove("invalid"); showErr("");
+          palettes[mode][key] = rgb255ToOklch(rgb); syncRow(row, key); refreshDerived();
+        } else if (/[^0-9a-fA-F#]/.test(raw) || digits.length > 6) {
+          hexIn.classList.add("invalid");
+          showErr("Not a valid hex color — use #RGB or #RRGGBB.");
+        } else { hexIn.classList.remove("invalid"); showErr(""); }
+      });
       hexIn.addEventListener("change", () => {
         const rgb = hexToRgb255(hexIn.value);
-        if (!rgb) { hexIn.classList.add("invalid"); return; }
-        hexIn.classList.remove("invalid");
-        palettes[mode][key] = rgb255ToOklch(rgb); syncRow(row, key); refreshDerived();
+        if (!rgb) { hexIn.classList.add("invalid"); showErr("That is not a valid hex color — use #RGB or #RRGGBB. The token was not changed."); }
+        else { hexIn.classList.remove("invalid"); showErr(""); palettes[mode][key] = rgb255ToOklch(rgb); syncRow(row, key); refreshDerived(); }
+        gestureEnd();
       });
-      hexIn.addEventListener("input", () => hexIn.classList.remove("invalid"));
+      const okIn = row.querySelector(".oklchin");
+      okIn.addEventListener("focus", gestureBegin);
+      okIn.addEventListener("blur", gestureEnd);
+      okIn.addEventListener("input", () => { okIn.classList.remove("invalid"); });
+      okIn.addEventListener("change", () => {
+        const parsed = parseOklchText(okIn.value);
+        if (!parsed) { okIn.classList.add("invalid"); showErr("Could not parse that — expected a form like oklch(0.650 0.150 25.0). The token was not changed."); }
+        else { okIn.classList.remove("invalid"); showErr(""); palettes[mode][key] = parsed; syncRow(row, key); refreshDerived(); }
+        gestureEnd();
+      });
+      row.querySelector(".token-reset").addEventListener("click", () => {
+        pushUndo();
+        const fresh = generatePalettes(currentSeed().hue, currentSeed().sat, currentSeed().harmony)[mode][key];
+        palettes[mode][key] = { ...fresh };
+        syncRow(row, key); refreshDerived();
+        toast("Reset " + def.name + " to the generated value");
+      });
       row.querySelectorAll('input[type="range"]').forEach(sl => {
+        sl.addEventListener("pointerdown", gestureBegin);
+        sl.addEventListener("focus", gestureBegin);
+        sl.addEventListener("change", gestureEnd);
         sl.addEventListener("input", () => {
           const ch = sl.dataset.ch, v = parseFloat(sl.value);
           if (ch === "l") col().l = v / 1000; else if (ch === "c") col().c = v / 1000; else col().h = v;
           syncRow(row, key, ch); refreshDerived();
+        });
+      });
+      row.querySelectorAll(".numin").forEach(inp => {
+        const ch = inp.dataset.val;
+        function commitNum() {
+          const v = parseFloat(inp.value);
+          if (isNaN(v)) { syncRow(row, key); return; }
+          if (ch === "l") col().l = clamp(v > 1 ? v / 100 : v, 0, 1);
+          else if (ch === "c") col().c = clamp(v, 0, 0.4);
+          else col().h = ((v % 360) + 360) % 360;
+          syncRow(row, key); refreshDerived();
+        }
+        inp.addEventListener("focus", gestureBegin);
+        inp.addEventListener("blur", gestureEnd);
+        inp.addEventListener("change", commitNum);
+        inp.addEventListener("change", gestureEnd);
+        inp.addEventListener("keydown", e => {
+          if (e.key === "Enter") { e.preventDefault(); inp.blur(); }
+          else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+            e.preventDefault();
+            const stepBy = (ch === "h" ? 1 : 0.005) * (e.shiftKey ? 10 : 1) * (e.key === "ArrowUp" ? 1 : -1);
+            if (ch === "l") col().l = clamp(col().l + stepBy, 0, 1);
+            else if (ch === "c") col().c = clamp(col().c + stepBy, 0, 0.4);
+            else col().h = ((col().h + stepBy) % 360 + 360) % 360;
+            syncRow(row, key); refreshDerived();
+          }
         });
       });
       row.addEventListener("mouseenter", () => setHighlight(key, true));
@@ -888,9 +1176,13 @@
         sl.value = ch === "l" ? Math.round(col.l * 1000) : ch === "c" ? Math.round(col.c * 1000) : Math.round(col.h);
         sl.style.background = trackGradient(ch, col);
       });
-      row.querySelector('[data-val="l"]').textContent = col.l.toFixed(3);
-      row.querySelector('[data-val="c"]').textContent = col.c.toFixed(3);
-      row.querySelector('[data-val="h"]').textContent = Math.round(col.h) + "°";
+      row.querySelectorAll(".numin").forEach(inp => {
+        if (document.activeElement === inp) return;
+        const ch = inp.dataset.val;
+        inp.value = ch === "l" ? col.l.toFixed(3) : ch === "c" ? col.c.toFixed(3) : String(Math.round(col.h));
+      });
+      const okIn = row.querySelector(".oklchin");
+      if (document.activeElement !== okIn) okIn.value = `oklch(${col.l.toFixed(3)} ${col.c.toFixed(3)} ${col.h.toFixed(1)})`;
       row.querySelector(".gamut-note").classList.toggle("show", Math.abs(displayCol(col).c - col.c) > 0.01);
     }
     function renderEditor() {
@@ -903,7 +1195,47 @@
       panel.hidden = !(step in GROUPS);
       panel.innerHTML = "";
       if (step in GROUPS) for (const key of GROUPS[step].tokens) { const r = buildTokenRow(key); panel.appendChild(r); syncRow(r, key); }
-      if (step === "review") { const st = pairStats(); $("statAA").textContent = st.aa + "/" + st.total; $("statAAA").textContent = st.aaa + "/" + st.total; $("statFix").textContent = st.fail; }
+      if (step === "review") {
+        const st = pairStats();
+        $("statAA").textContent = st.aa + "/" + st.total; $("statAAA").textContent = st.aaa + "/" + st.total; $("statFix").textContent = st.fail;
+        $("statModeLbl").innerHTML = `The stats above are for the <strong>${mode}</strong> palette you are editing. The export always ships <strong>both</strong> palettes — so here is the other one too:`;
+        const bm = $("bothModes"); bm.innerHTML = "";
+        for (const m of ["light", "dark"]) {
+          const s2 = pairStats(m);
+          const row = document.createElement("div"); row.className = "bm-row";
+          row.innerHTML = `<span class="grow"><strong>${m === "light" ? "Light" : "Dark"} palette</strong> · ${s2.aa}/${s2.total} pass AA · ${s2.aaa}/${s2.total} AAA${s2.fail ? ` · <span style="color:var(--chrome-bad);font-weight:700">${s2.fail} failing</span>` : ` · <span style="color:var(--chrome-good);font-weight:700">all pass</span>`}</span>`;
+          if (m !== mode) {
+            const b = document.createElement("button"); b.className = "btn small"; b.textContent = "Edit " + m;
+            b.addEventListener("click", () => setMode(m));
+            row.appendChild(b);
+          } else {
+            const tag = document.createElement("span"); tag.className = "cmp-edit"; tag.textContent = "editing";
+            row.appendChild(tag);
+          }
+          bm.appendChild(row);
+        }
+      }
+      updateStepNav();
+    }
+    function updateStepNav() {
+      const idx = STEPS.findIndex(x => x.id === step);
+      const prev = STEPS[idx - 1], next = STEPS[idx + 1];
+      const pb = $("prevStepBtn"), nb = $("nextStepBtn");
+      pb.style.visibility = prev ? "visible" : "hidden";
+      nb.style.visibility = next ? "visible" : "hidden";
+      if (prev) pb.textContent = "← " + prev.title;
+      if (next) {
+        let extra = "";
+        if (GROUPS[next.id]) { const f = groupFails(next.id); if (f) extra = ` · ${f} issue${f > 1 ? "s" : ""}`; }
+        if (next.id === "review") { const f = pairStats("light").fail + pairStats("dark").fail; if (f) extra = ` · ${f} failing`; }
+        nb.textContent = next.title + extra + " →";
+      }
+    }
+    function gotoStep(d) {
+      const idx = STEPS.findIndex(x => x.id === step);
+      const t = STEPS[idx + d]; if (!t) return;
+      step = t.id; renderEditor(); renderStepper(); saveState();
+      document.querySelector('section[aria-label="Token editor"]').scrollIntoView({ behavior: "smooth", block: "start" });
     }
     function setHighlight(key, on) {
       document.querySelectorAll("#preview [data-tok]").forEach(el => {
@@ -919,42 +1251,119 @@
         for (const k of ALL_KEYS) host.style.setProperty("--pv-" + kebab(k), oklchCss(pal[k]));
       const label = (mode === "light" ? "Light" : "Dark") + " palette";
       $("previewModeLabel").textContent = "· showing the " + label.toLowerCase();
-      $("auditModeLabel").textContent = "· " + label;
       $("pvModePill").textContent = mode.toUpperCase() + " PALETTE";
       $("miniMode").textContent = mode.toUpperCase() + " PALETTE";
     }
+    function renderCompare() {
+      const host = $("compareStrip"); if (!host) return;
+      host.innerHTML = "";
+      for (const m of ["light", "dark"]) {
+        const row = document.createElement("button");
+        row.type = "button"; row.className = "cmp-row";
+        row.setAttribute("aria-pressed", m === mode);
+        row.setAttribute("aria-label", (m === "light" ? "Light" : "Dark") + " palette key colors" + (m === mode ? " — being edited" : " — activate to edit it"));
+        row.innerHTML = `<span class="cmp-mode">${m === "light" ? "Light" : "Dark"}</span>` +
+          ["bg", "surface", "text", "primary", "accent"].map(k => `<span class="cmp-sw" style="background:${oklchCss(palettes[m][k])}" title="${TOKEN_DEFS[k].name}"></span>`).join("") +
+          `<span class="cmp-edit">${m === mode ? "editing" : "tap to edit"}</span>`;
+        row.addEventListener("click", () => setMode(m));
+        host.appendChild(row);
+      }
+    }
     function renderAudit() {
-      const pal = palettes[mode], table = $("auditTable"); table.innerHTML = "";
+      const vm = auditMode();
+      const pal = palettes[vm], table = $("auditTable"); table.innerHTML = "";
+      $("auditModeLabel").textContent = "· " + (vm === "light" ? "Light" : "Dark") + " palette" + (vm !== mode ? " (viewing — Fix edits this palette)" : "");
+      $("auditLight").setAttribute("aria-pressed", vm === "light");
+      $("auditDark").setAttribute("aria-pressed", vm === "dark");
       PAIRS.forEach((p, i) => {
         const fgC = pal[p.fg], bgC = pal[p.bg];
         const fgRgb = oklchToRgb255(fgC), bgRgb = oklchToRgb255(bgC);
         const r = wcagRatio(fgRgb, bgRgb), lc = apcaLc(fgRgb, bgRgb);
         const pass = r >= p.min, aaa = r >= p.aaa;
+        const apcaLow = pass && Math.abs(lc) < (p.graphic ? 45 : 60);
         const row = document.createElement("div"); row.className = "audit-row";
         row.innerHTML = `
           <div class="pair-vis">
             <span class="pair-chip" style="background:${oklchCss(bgC)};color:${oklchCss(fgC)}">Ag</span>
             <span class="pair-names">${p.label}<small class="mono">--${kebab(p.fg)} on --${kebab(p.bg)} · needs ${p.min}:1${p.graphic ? " (UI)" : ""}</small></span>
           </div>
-          <div class="ratio mono">${r.toFixed(2)}:1<small>APCA Lc ${Math.abs(lc).toFixed(0)}</small></div>
+          <div class="ratio mono">${r.toFixed(2)}:1<small>APCA Lc ${lc.toFixed(0)}${apcaLow ? ` · <span style="color:var(--chrome-warn);font-weight:700">APCA low for ${p.graphic ? "UI" : "text"}</span>` : ""}</small></div>
           <span class="badge ${pass ? (aaa ? "pass" : "mid") : "fail"}">${pass ? (aaa ? "AAA" : "AA") : "Fail"}</span>
           <span class="fixcell">${pass ? "" : `<button class="btn small" data-fix="${i}">Fix</button>`}</span>`;
         table.appendChild(row);
       });
     }
-    function fixPair(i) { resolvePairIn(palettes[mode], PAIRS[i]); }
+    const ratioIn = (pal, q) => wcagRatio(oklchToRgb255(pal[q.fg]), oklchToRgb255(pal[q.bg]));
+    /* Cross-pair safe fix: run the standard resolve, then check EVERY pair —
+       not just same-foreground siblings. Moving a shared background token
+       (surface backs four pairs, bg backs nine) can silently break a pair
+       that was passing. If it did, retry with a foreground-only move and
+       keep whichever outcome solves the target with fewer breakages.
+       Returns the list of pairs that were passing before and fail now. */
+    function safeResolve(pal, p) {
+      const snap = JSON.parse(JSON.stringify(pal));
+      const before = PAIRS.map(q => ratioIn(pal, q));
+      const brokeIn = state => PAIRS.filter((q, i) => before[i] >= q.min && ratioIn(state, q) < q.min);
+      resolvePairIn(pal, p);
+      let broke = brokeIn(pal);
+      if (broke.length) {
+        const alt = JSON.parse(JSON.stringify(snap));
+        alt[p.fg].l = solveLightness(alt[p.fg], oklchToRgb255(alt[p.bg]), p.min);
+        const altBroke = brokeIn(alt);
+        if (altBroke.length < broke.length || (ratioIn(alt, p) >= p.min && ratioIn(pal, p) < p.min)) {
+          for (const k of ALL_KEYS) pal[k] = alt[k];
+          broke = altBroke;
+        }
+      }
+      return broke;
+    }
+    function fixPair(i, palObj) { safeResolve(palObj || palettes[mode], PAIRS[i]); }
+    /* Fix one pair and report the truth: whether it actually passes now,
+       which token's lightness moved (it is not always the one in the row —
+       the resolver may move the fill), and any collateral breakage. */
+    function fixPairDetailed(pal, p) {
+      const snap = JSON.parse(JSON.stringify(pal));
+      const broke = safeResolve(pal, p);
+      const rAfter = ratioIn(pal, p);
+      let moved = null;
+      for (const k of [p.fg, p.bg]) if (Math.abs(snap[k].l - pal[k].l) > 0.0005) moved = { key: k, from: snap[k].l, to: pal[k].l };
+      const solved = rAfter >= p.min;
+      let msg;
+      if (!solved && !moved) msg = `Could not fix “${p.label}” by lightness alone — still ${rAfter.toFixed(2)}:1 (needs ${p.min}:1). Try a hue or chroma change.`;
+      else if (!solved) msg = `Improved “${p.label}” to ${rAfter.toFixed(2)}:1, but it still needs ${p.min}:1 — lightness alone cannot get there. Try a hue or chroma change.`;
+      else {
+        msg = `Fixed “${p.label}” — ${moved ? TOKEN_DEFS[moved.key].name + " lightness " + moved.from.toFixed(3) + " → " + moved.to.toFixed(3) + " · " : ""}now ${rAfter.toFixed(2)}:1 ✓`;
+        if (broke.length) msg += ` — but ${broke.map(q => "“" + q.label + "”").join(", ")} now fail${broke.length > 1 ? "" : "s"}; fix ${broke.length > 1 ? "those" : "that"} next.`;
+      }
+      return { solved, msg };
+    }
+    function logFix(msg) {
+      const wrap = $("fixLogWrap"); if (!wrap) return;
+      wrap.hidden = false;
+      const li = document.createElement("li");
+      li.textContent = msg;
+      const list = $("fixLog");
+      list.prepend(li);
+      while (list.children.length > 8) list.lastElementChild.remove();
+    }
     function fixAll() {
+      const before = pairStats().fail;
+      if (!before) { toast("Nothing to fix — every pair already passes WCAG AA"); return; }
+      pushUndo();
       for (let pass = 0; pass < 4; pass++) {
         let dirty = false;
         PAIRS.forEach((p, i) => {
           const pal = palettes[mode];
-          if (wcagRatio(oklchToRgb255(pal[p.fg]), oklchToRgb255(pal[p.bg])) < p.min) { fixPair(i); dirty = true; }
+          if (ratioIn(pal, p) < p.min) { fixPair(i); dirty = true; }
         });
         if (!dirty) break;
       }
       refreshDerived(); renderEditor(); renderStepper();
       const st = pairStats();
-      toast(st.fail === 0 ? "All pairs now pass WCAG AA" : st.fail + " pair(s) still failing — the two colors may need a hue or chroma change, not just lightness");
+      const msg = st.fail === 0
+        ? `Fix all: repaired ${before} pair${before > 1 ? "s" : ""} — every pair now passes WCAG AA`
+        : `Fix all: repaired ${before - st.fail} of ${before} — ${st.fail} still failing; those need a hue or chroma change, not just lightness`;
+      toast(msg); logFix(msg);
     }
 
     /* ================= export ================= */
@@ -964,7 +1373,25 @@
     function buildExport() {
       if (exportState.format === "json") {
         const obj = { light: {}, dark: {} };
-        for (const m of ["light", "dark"]) for (const k of ALL_KEYS) obj[m][k] = { value: tokenValue(palettes[m][k]), oklch: { l: +palettes[m][k].l.toFixed(3), c: +palettes[m][k].c.toFixed(3), h: +palettes[m][k].h.toFixed(1) }, hex: oklchToHex(displayCol(palettes[m][k])) };
+        for (const m of ["light", "dark"]) for (const k of ALL_KEYS) {
+          /* value, oklch and hex must all describe the SAME color: the
+             gamut-mapped display color. (Previously the nested oklch held
+             the raw palette values while value/hex were clamped, so one
+             entry contained two different colors.) All three fields are
+             derived from the one rounded triple that is printed in the
+             entry, so they agree exactly — no rounding drift between
+             representations. Out-of-gamut tokens are flagged with
+             gamutClamped instead of silently diverging. */
+          const raw = palettes[m][k], d = displayCol(raw);
+          const triple = { l: +d.l.toFixed(3), c: +d.c.toFixed(3), h: +d.h.toFixed(1) };
+          const entry = {
+            value: exportState.notation === "oklch" ? `oklch(${triple.l.toFixed(3)} ${triple.c.toFixed(3)} ${triple.h.toFixed(1)})` : oklchToHex(triple),
+            oklch: triple,
+            hex: oklchToHex(triple)
+          };
+          if (Math.abs(d.c - raw.c) > 0.001) entry.gamutClamped = true;
+          obj[m][k] = entry;
+        }
         return JSON.stringify(obj, null, 2);
       }
       const lines = m => ALL_KEYS.map(k => "  --" + kebab(k) + ": " + tokenValue(palettes[m][k]) + ";").join("\n");
@@ -974,15 +1401,18 @@
     }
     function renderExport() {
       $("exportBox").textContent = buildExport();
-      $("exportMeta").textContent = ALL_KEYS.length * 2 + " tokens · light + dark";
+      let clamped = 0;
+      for (const m of ["light", "dark"]) for (const k of ALL_KEYS) if (Math.abs(displayCol(palettes[m][k]).c - palettes[m][k].c) > 0.005) clamped++;
+      $("exportMeta").textContent = ALL_KEYS.length * 2 + " tokens · light + dark" + (clamped ? ` · ⚠ ${clamped} token${clamped > 1 ? "s" : ""} outside the sRGB gamut — exported with chroma reduced` : "");
       $("notationSeg").style.display = exportState.format === "json" ? "none" : "";
       $("darkSeg").style.display = exportState.format === "json" ? "none" : "";
     }
-    function refreshDerived() { applyPreview(); renderAudit(); renderExport(); renderStepper(); }
+    function refreshDerived() { applyPreview(); renderAudit(); renderExport(); renderStepper(); renderCompare(); saveState(); }
 
     /* ================= wiring ================= */
     function setMode(m) {
       mode = m;
+      auditView = m;
       $("modeLight").setAttribute("aria-pressed", m === "light");
       $("modeDark").setAttribute("aria-pressed", m === "dark");
       renderEditor(); refreshDerived(); renderStepper();
@@ -991,20 +1421,43 @@
     $("modeDark").addEventListener("click", () => setMode("dark"));
     $("miniMode").addEventListener("click", () => setMode(mode === "light" ? "dark" : "light"));
     $("miniPreview").addEventListener("click", () => $("previewCard").scrollIntoView({ behavior: "smooth", block: "start" }));
-    $("exportJump").addEventListener("click", () => { step = "review"; renderEditor(); renderStepper(); $("exportCard").scrollIntoView({ behavior: "smooth", block: "start" }); });
+    $("exportJump").addEventListener("click", () => { step = "review"; renderEditor(); renderStepper(); saveState(); $("exportCard").scrollIntoView({ behavior: "smooth", block: "start" }); });
 
     function updateSeedLabels() {
-      $("seedHueVal").textContent = seedEls.hue.value + "°";
-      $("seedSatVal").textContent = seedEls.sat.value + "%";
+      const hueIn = $("seedHueVal"), satIn = $("seedSatVal");
+      if (document.activeElement !== hueIn) hueIn.value = seedEls.hue.value;
+      if (document.activeElement !== satIn) satIn.value = seedEls.sat.value;
       seedEls.sat.style.background = `linear-gradient(90deg, oklch(.6 .01 ${seedEls.hue.value}), oklch(.58 .19 ${seedEls.hue.value}))`;
+      const harmName = seedEls.harmony.selectedOptions[0] ? seedEls.harmony.selectedOptions[0].textContent.split(" — ")[0] : seedEls.harmony.value + "°";
+      $("seedSummary").textContent = `Seed — hue ${seedEls.hue.value}° · intensity ${seedEls.sat.value}% · ${harmName} (${seedEls.harmony.value}°)`;
+      document.querySelectorAll("#presetRow .preset").forEach(b => {
+        const on = +b.dataset.hue === +seedEls.hue.value && +b.dataset.sat === +seedEls.sat.value && +b.dataset.harmony === +seedEls.harmony.value;
+        b.setAttribute("aria-pressed", on);
+      });
+      saveState();
     }
     [seedEls.hue, seedEls.sat].forEach(el => el.addEventListener("input", updateSeedLabels));
+    seedEls.harmony.addEventListener("change", updateSeedLabels);
+    function seedNumWire(inputId, slider, min, max) {
+      const inp = $(inputId);
+      inp.addEventListener("change", () => {
+        const v = parseFloat(inp.value);
+        if (isNaN(v)) { updateSeedLabels(); return; }
+        slider.value = clamp(Math.round(v), min, max);
+        updateSeedLabels();
+      });
+      inp.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } });
+    }
+    seedNumWire("seedHueVal", seedEls.hue, 0, 360);
+    seedNumWire("seedSatVal", seedEls.sat, 0, 100);
     $("generateBtn").addEventListener("click", () => {
+      pushUndo();
       palettes = generatePalettes(+seedEls.hue.value, +seedEls.sat.value, +seedEls.harmony.value);
       renderEditor(); refreshDerived(); renderStepper();
       toast("Palettes generated — every pair starts AA-clean");
     });
     $("deriveDarkBtn").addEventListener("click", () => {
+      pushUndo();
       const inv = {}; for (const k of ALL_KEYS) { const c = palettes.light[k]; inv[k] = { l: clamp(1.04 - c.l, 0.03, 0.97), c: c.c, h: c.h }; }
       palettes.dark = inv;
       if (mode === "dark") renderEditor();
@@ -1012,6 +1465,7 @@
       toast("Dark palette derived from light — check its audit before exporting");
     });
     $("diceBtn").addEventListener("click", () => {
+      pushUndo();
       seedEls.hue.value = Math.floor(Math.random() * 360);
       seedEls.sat.value = 35 + Math.floor(Math.random() * 60);
       seedEls.harmony.value = ["180", "150", "120", "32", "0"][Math.floor(Math.random() * 5)];
@@ -1022,12 +1476,15 @@
     });
     PRESETS.forEach(p => {
       const b = document.createElement("button"); b.className = "preset";
+      b.dataset.hue = p.hue; b.dataset.sat = p.sat; b.dataset.harmony = p.harmony;
+      b.setAttribute("aria-pressed", "false");
       const dots = [0, 1, 2].map(i => {
         const col = i === 1 ? { l: 0.56, c: 0.13, h: (p.hue + p.harmony) % 360 } : i === 2 ? { l: 0.52, c: 0.125, h: 152 } : { l: 0.545, c: 0.05 + (p.sat / 100) * 0.125, h: p.hue };
         return `<i style="background:${oklchCss(col)}"></i>`;
       }).join("");
       b.innerHTML = `<span class="dots">${dots}</span>${p.name}`;
       b.addEventListener("click", () => {
+        pushUndo();
         seedEls.hue.value = p.hue; seedEls.sat.value = p.sat; seedEls.harmony.value = String(p.harmony);
         updateSeedLabels();
         palettes = generatePalettes(p.hue, p.sat, p.harmony);
@@ -1039,16 +1496,23 @@
 
     $("auditTable").addEventListener("click", e => {
       const btn = e.target.closest("[data-fix]"); if (!btn) return;
-      fixPair(+btn.dataset.fix);
+      const i = +btn.dataset.fix;
+      pushUndo();
+      const rep = fixPairDetailed(palettes[auditMode()], PAIRS[i]);
       document.querySelectorAll(".token").forEach(r => syncRow(r, r.dataset.key));
       refreshDerived(); renderStepper();
       if (step === "review") renderEditor();
-      toast("Fixed: " + PAIRS[+btn.dataset.fix].label);
+      /* the re-render destroyed the clicked button — put focus back on the
+         same pair's new Fix button, or on its row if the pair now passes */
+      const newBtn = document.querySelector(`[data-fix="${i}"]`);
+      if (newBtn) newBtn.focus();
+      else { const row = $("auditTable").children[i]; if (row) { row.tabIndex = -1; row.focus(); } }
+      toast(rep.msg); logFix(rep.msg);
     });
     $("fixAllBtn").addEventListener("click", fixAll);
     $("fixAllBtn2").addEventListener("click", fixAll);
 
-    function segWire(btnId, fn) { $(btnId).addEventListener("click", () => { fn(); renderExport(); }); }
+    function segWire(btnId, fn) { $(btnId).addEventListener("click", () => { fn(); renderExport(); saveState(); }); }
     segWire("fmtCss", () => { exportState.format = "css"; $("fmtCss").setAttribute("aria-pressed", "true"); $("fmtJson").setAttribute("aria-pressed", "false"); });
     segWire("fmtJson", () => { exportState.format = "json"; $("fmtJson").setAttribute("aria-pressed", "true"); $("fmtCss").setAttribute("aria-pressed", "false"); });
     segWire("notOklch", () => { exportState.notation = "oklch"; $("notOklch").setAttribute("aria-pressed", "true"); $("notHex").setAttribute("aria-pressed", "false"); });
@@ -1075,12 +1539,54 @@
       toast("Downloaded " + a.download);
     });
 
+    /* ================= session controls ================= */
+    $("undoBtn").addEventListener("click", undo);
+    $("redoBtn").addEventListener("click", redo);
+    $("auditLight").addEventListener("click", () => { auditView = "light"; renderAudit(); });
+    $("auditDark").addEventListener("click", () => { auditView = "dark"; renderAudit(); });
+    $("prevStepBtn").addEventListener("click", () => gotoStep(-1));
+    $("nextStepBtn").addEventListener("click", () => gotoStep(1));
+    function setTopbarVar() { const tb = document.querySelector(".topbar"); if (tb) document.documentElement.style.setProperty("--topbar-h", tb.offsetHeight + "px"); }
+    window.addEventListener("resize", setTopbarVar);
+    $("resetBtn").addEventListener("click", () => {
+      pushUndo();
+      try { localStorage.removeItem(STORE_KEY); } catch (e) {}
+      seedEls.hue.value = 18; seedEls.sat.value = 62; seedEls.harmony.value = "180";
+      palettes = generatePalettes(18, 62, 180);
+      mode = "light"; step = "seed"; auditView = "light";
+      $("modeLight").setAttribute("aria-pressed", "true");
+      $("modeDark").setAttribute("aria-pressed", "false");
+      updateSeedLabels(); renderEditor(); refreshDerived(); renderStepper();
+      toast("Reset to the default palettes — Ctrl+Z brings your work back");
+    });
+    $("copySeedLinkBtn").addEventListener("click", async () => {
+      const s = currentSeed();
+      const u = new URL(location.href);
+      u.searchParams.set("seed", s.hue + "," + s.sat + "," + s.harmony);
+      try { await navigator.clipboard.writeText(u.toString()); toast("Seed link copied — opening it recreates this seed"); }
+      catch (e) { toast("Seed: hue " + s.hue + "° · intensity " + s.sat + "% · harmony " + s.harmony + "°"); }
+    });
+    document.addEventListener("keydown", e => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      const k = e.key.toLowerCase();
+      if (k !== "z" && k !== "y") return;
+      const t = e.target;
+      /* leave native text undo alone inside text fields; their palette commits are covered by the gesture history */
+      if (t && (t.tagName === "TEXTAREA" || t.isContentEditable || (t.tagName === "INPUT" && ["text", "search", "url", "tel", "password"].includes(t.type)))) return;
+      e.preventDefault();
+      if (k === "y" || e.shiftKey) redo(); else undo();
+    });
+
     /* ================= init ================= */
     $("preview").innerHTML = buildPreview();
+    const loadedFromLink = restoreState();
     updateSeedLabels();
+    setTopbarVar();
     renderStepper();
     renderEditor();
     refreshDerived();
+    updateUndoUI();
+    if (loadedFromLink) toast("Loaded the shared seed — palettes generated from it");
     </script>
 </body>
 </html>
