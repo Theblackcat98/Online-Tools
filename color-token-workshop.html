@@ -341,6 +341,16 @@
       @media (max-width:1020px){
         .stepper{position:sticky;top:var(--topbar-h,57px);z-index:35;background:var(--chrome-bg);padding-bottom:8px}
       }
+      @media (pointer:coarse){
+        .btn.small{min-height:40px;padding:8px 13px}
+        .seg button{min-height:40px;padding:9px 14px}
+        .preset{min-height:40px}
+        .step{min-height:40px}
+        input[type="range"].tok::-webkit-slider-thumb{width:26px;height:26px}
+        input[type="range"].tok::-moz-range-thumb{width:24px;height:24px}
+        .hue-track::-webkit-slider-thumb{width:28px;height:28px}
+        .hue-track::-moz-range-thumb{width:26px;height:26px}
+      }
     </style>
   </head>
   <body>
@@ -1353,7 +1363,17 @@
     function buildExport() {
       if (exportState.format === "json") {
         const obj = { light: {}, dark: {} };
-        for (const m of ["light", "dark"]) for (const k of ALL_KEYS) obj[m][k] = { value: tokenValue(palettes[m][k]), oklch: { l: +palettes[m][k].l.toFixed(3), c: +palettes[m][k].c.toFixed(3), h: +palettes[m][k].h.toFixed(1) }, hex: oklchToHex(displayCol(palettes[m][k])) };
+        for (const m of ["light", "dark"]) for (const k of ALL_KEYS) {
+          /* value, oklch and hex must all describe the SAME color: the
+             gamut-mapped display color. (Previously the nested oklch held
+             the raw palette values while value/hex were clamped, so one
+             entry contained two different colors.) Out-of-gamut tokens are
+             flagged with gamutClamped instead of silently diverging. */
+          const raw = palettes[m][k], d = displayCol(raw);
+          const entry = { value: tokenValue(raw), oklch: { l: +d.l.toFixed(3), c: +d.c.toFixed(3), h: +d.h.toFixed(1) }, hex: oklchToHex(d) };
+          if (Math.abs(d.c - raw.c) > 0.001) entry.gamutClamped = true;
+          obj[m][k] = entry;
+        }
         return JSON.stringify(obj, null, 2);
       }
       const lines = m => ALL_KEYS.map(k => "  --" + kebab(k) + ": " + tokenValue(palettes[m][k]) + ";").join("\n");
@@ -1363,7 +1383,9 @@
     }
     function renderExport() {
       $("exportBox").textContent = buildExport();
-      $("exportMeta").textContent = ALL_KEYS.length * 2 + " tokens · light + dark";
+      let clamped = 0;
+      for (const m of ["light", "dark"]) for (const k of ALL_KEYS) if (Math.abs(displayCol(palettes[m][k]).c - palettes[m][k].c) > 0.005) clamped++;
+      $("exportMeta").textContent = ALL_KEYS.length * 2 + " tokens · light + dark" + (clamped ? ` · ⚠ ${clamped} token${clamped > 1 ? "s" : ""} outside the sRGB gamut — exported with chroma reduced` : "");
       $("notationSeg").style.display = exportState.format === "json" ? "none" : "";
       $("darkSeg").style.display = exportState.format === "json" ? "none" : "";
     }
