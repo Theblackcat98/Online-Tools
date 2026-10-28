@@ -721,6 +721,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         <span class="btn-text">Copy code</span>
       </button>
+      <button class="btn" id="copy-link-btn" type="button" title="Copy a link that opens this exact diagram">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        <span class="btn-text">Copy link</span>
+      </button>
 
       <div class="menu-wrap">
         <button class="btn primary" id="export-btn" type="button" aria-haspopup="true" aria-expanded="false">
@@ -1818,6 +1822,7 @@ Grid, Loss, 30` },
         updateMeta();
         render();
         persistDraft();
+        scheduleHash();
         if (opts.msg && prev.code && prev.code !== code) {
           toast(opts.msg, "Undo", function () {
             editor.value = prev.code;
@@ -1825,6 +1830,7 @@ Grid, Loss, 30` },
             updateMeta();
             render();
             persistDraft();
+            scheduleHash();
             editor.focus();
           });
         } else if (opts.msg) {
@@ -1878,7 +1884,7 @@ Grid, Loss, 30` },
       $("font-dec").addEventListener("click", function () { setFontSize(prefs.fontSize - 1); });
       $("font-inc").addEventListener("click", function () { setFontSize(prefs.fontSize + 1); });
       applyEditorPrefs();
-      editor.addEventListener("input", function () { updateMeta(); scheduleRender(); persistDraft(); });
+      editor.addEventListener("input", function () { updateMeta(); scheduleRender(); persistDraft(); scheduleHash(); });
       editor.addEventListener("keydown", function (e) {
         if (e.key === "Tab") {
           e.preventDefault();
@@ -2331,31 +2337,113 @@ Grid, Loss, 30` },
         });
       });
 
+      /* ---------------- share links ---------------- */
+      function b64EncodeBytes(bytes) {
+        var s = "";
+        for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+        return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      }
+      function b64DecodeBytes(str) {
+        str = str.replace(/-/g, "+").replace(/_/g, "/");
+        while (str.length % 4) str += "=";
+        var s = atob(str);
+        var u = new Uint8Array(s.length);
+        for (var i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
+        return u;
+      }
+      function encodeShare(code) {
+        var bytes = new TextEncoder().encode(code);
+        if (typeof CompressionStream !== "undefined") {
+          try {
+            return new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream("deflate")))
+              .arrayBuffer()
+              .then(function (buf) { return "c=" + b64EncodeBytes(new Uint8Array(buf)); })
+              .catch(function () { return "p=" + b64EncodeBytes(bytes); });
+          } catch (e) { /* fall through to plain */ }
+        }
+        return Promise.resolve("p=" + b64EncodeBytes(bytes));
+      }
+      function decodeShare(frag) {
+        var bytes;
+        try { bytes = b64DecodeBytes(frag.slice(2)); } catch (e) { return Promise.resolve(null); }
+        if (frag.indexOf("c=") !== 0) {
+          try { return Promise.resolve(new TextDecoder().decode(bytes)); }
+          catch (e) { return Promise.resolve(null); }
+        }
+        if (typeof DecompressionStream === "undefined") return Promise.resolve(null);
+        try {
+          return new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate")))
+            .text()
+            .catch(function () { return null; });
+        } catch (e) { return Promise.resolve(null); }
+      }
+      var hashTimer = null, hashSeq = 0;
+      function syncHash() {
+        var code = editor.value;
+        var my = ++hashSeq;
+        if (!code.trim()) {
+          if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+          return;
+        }
+        encodeShare(code).then(function (frag) {
+          if (my !== hashSeq) return;
+          var want = "#" + frag;
+          if (location.hash !== want) history.replaceState(null, "", want);
+        });
+      }
+      function scheduleHash() {
+        if (hashTimer) clearTimeout(hashTimer);
+        hashTimer = setTimeout(syncHash, 700);
+      }
+      $("copy-link-btn").addEventListener("click", function () {
+        if (!editor.value.trim()) { toast("Nothing to share yet — write some code first"); return; }
+        encodeShare(editor.value).then(function (frag) {
+          hashSeq++;
+          history.replaceState(null, "", "#" + frag);
+          copyText(location.href, "Link copied — it opens this exact diagram");
+        });
+      });
+
       /* ---------------- boot ---------------- */
       $("theme-select").value = state.theme;
       if (!state.autoFit) {
         autofitToggle.classList.remove("on");
         autofitToggle.setAttribute("aria-pressed", "false");
       }
-      var bootDraft = store.get(DRAFT_KEY);
-      var bootCode = SAMPLES[0].code, bootPristine = true;
-      if (bootDraft && typeof bootDraft.code === "string" && bootDraft.code.trim()) {
-        bootCode = bootDraft.code;
-        bootPristine = !!bootDraft.pristine;
+      function draftOrSample() {
+        var draft = store.get(DRAFT_KEY);
+        if (draft && typeof draft.code === "string" && draft.code.trim()) {
+          return { code: draft.code, pristine: !!draft.pristine };
+        }
+        return { code: SAMPLES[0].code, pristine: true };
       }
-      editor.value = bootCode;
-      state.pristineCode = bootPristine ? bootCode : null;
-      updateMeta();
-      if (mermaidReady) {
-        initMermaid();
-        var v = (window.mermaid && window.mermaid.version) ? window.mermaid.version : PINNED_VERSION;
-        $("version-label").textContent = "Mermaid " + v;
-        render();
-        requestAnimationFrame(fit);
+      function startWith(code, pristine) {
+        editor.value = code;
+        state.pristineCode = pristine ? code : null;
+        updateMeta();
+        if (mermaidReady) {
+          initMermaid();
+          var v = (window.mermaid && window.mermaid.version) ? window.mermaid.version : PINNED_VERSION;
+          $("version-label").textContent = "Mermaid " + v;
+          render();
+          requestAnimationFrame(fit);
+        } else {
+          $("version-label").textContent = "Mermaid " + PINNED_VERSION;
+          setStatus("err", "Mermaid failed to load — check your connection and reload.");
+          stageEmpty.classList.add("show");
+        }
+      }
+      var bootHash = location.hash;
+      if (bootHash.length > 3 && (bootHash.indexOf("#c=") === 0 || bootHash.indexOf("#p=") === 0)) {
+        decodeShare(bootHash.slice(1)).then(function (code) {
+          if (code && code.trim()) { startWith(code, true); return; }
+          var d = draftOrSample();
+          startWith(d.code, d.pristine);
+          toast("Couldn't read the diagram in that link — loaded your draft instead");
+        });
       } else {
-        $("version-label").textContent = "Mermaid " + PINNED_VERSION;
-        setStatus("err", "Mermaid failed to load — check your connection and reload.");
-        stageEmpty.classList.add("show");
+        var d0 = draftOrSample();
+        startWith(d0.code, d0.pristine);
       }
     </script>
   </body>
