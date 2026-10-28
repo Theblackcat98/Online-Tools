@@ -1415,7 +1415,7 @@ Grid, Loss, 30` },
           clearErrorUI();
           updateMeta();
           setStatus("ok", "Rendered");
-          if (state.autoFit) fit();
+          if (state.autoFit && !state.viewTouched) fit();
           else applyTransform();
         }).catch(function (err) {
           if (seq !== state.renderSeq) return;
@@ -1454,12 +1454,14 @@ Grid, Loss, 30` },
         state.scale = clampScale(s);
         state.tx = (r.width - state.natW * state.scale) / 2;
         state.ty = (r.height - state.natH * state.scale) / 2;
+        state.viewTouched = false;
         applyTransform();
       }
       function zoomAt(mx, my, factor) {
         var s0 = state.scale;
         var s1 = clampScale(s0 * factor);
         if (s1 === s0) return;
+        state.viewTouched = true;
         var px = (mx - state.tx) / s0, py = (my - state.ty) / s0;
         state.scale = s1;
         state.tx = mx - px * s1;
@@ -1495,8 +1497,10 @@ Grid, Loss, 30` },
         pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
         if (pointers.size === 1) {
           state.tx += dx; state.ty += dy;
+          state.viewTouched = true;
           applyTransform();
         } else if (pointers.size === 2 && pinch) {
+          state.viewTouched = true;
           var pts = Array.from(pointers.values());
           var r = stage.getBoundingClientRect();
           var mx = (pts[0].x + pts[1].x) / 2 - r.left, my = (pts[0].y + pts[1].y) / 2 - r.top;
@@ -1539,12 +1543,12 @@ Grid, Loss, 30` },
         } else { toast("Fullscreen isn't available here"); }
       });
       document.addEventListener("fullscreenchange", function () {
-        setTimeout(function () { if (state.autoFit) fit(); }, 60);
+        setTimeout(function () { if (state.autoFit && !state.viewTouched) fit(); }, 60);
       });
       var resizeTimer = null;
       window.addEventListener("resize", function () {
         if (resizeTimer) clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function () { if (state.autoFit) fit(); }, 150);
+        resizeTimer = setTimeout(function () { if (state.autoFit && !state.viewTouched) fit(); }, 150);
       });
 
       /* ---------------- editor ---------------- */
