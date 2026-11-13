@@ -1857,17 +1857,28 @@ Grid, Loss, 30` },
         }
         gutterInner.innerHTML = html;
         gutterInner.style.transform = "translateY(" + (-editor.scrollTop) + "px)";
+        syncGutterFont();
         syncSampleSelect();
       }
       editor.addEventListener("scroll", function () {
         gutterInner.style.transform = "translateY(" + (-editor.scrollTop) + "px)";
       });
+      window.addEventListener("resize", syncGutterFont);
 
       var wrapToggle = $("wrap-toggle");
+      function syncGutterFont() {
+        // The gutter must render at the editor's *effective* font size, not
+        // the raw pref: the <=700px iOS input-zoom guard in this page's CSS
+        // forces textareas to 16px !important on phones, overriding the pref
+        // for #editor but not for the gutter div — at 13px pref the numbers
+        // then drift ~4.7px further behind the code on every line.
+        var eff = window.getComputedStyle(editor).fontSize;
+        if (gutterInner.style.fontSize !== eff) gutterInner.style.fontSize = eff;
+      }
       function applyEditorPrefs() {
         editor.classList.toggle("wrap", !!prefs.wrap);
         editor.style.fontSize = prefs.fontSize + "px";
-        gutterInner.style.fontSize = prefs.fontSize + "px";
+        syncGutterFont();
         wrapToggle.classList.toggle("on", !!prefs.wrap);
         wrapToggle.setAttribute("aria-pressed", String(!!prefs.wrap));
       }
